@@ -10,7 +10,7 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="src\\DiagnosticsPlugin.cs" />
+    <Compile Include="src\DiagnosticsPlugin.cs" />
     <Reference Include="BepInEx">
       <HintPath>$(BepInExCoreDir)\BepInEx.dll</HintPath>
       <Private>false</Private>

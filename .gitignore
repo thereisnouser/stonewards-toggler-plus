@@ -1,0 +1,19 @@
+# .NET output
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Local game inspection output
+out/
+
+# Local installs and game binaries
+BepInEx/
+Stonewards_Data/
+*.dll
+*.pdb
+
+# Local IDE state
+.idea/
+.vscode/

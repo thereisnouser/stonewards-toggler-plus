@@ -2,10 +2,15 @@
 param(
     [string]$GameDir = 'F:\Steam\steamapps\common\Stonewards',
     [string]$ProfileDir = '',
-    [string]$OutputDir = (Join-Path $PSScriptRoot 'out')
+    [string]$OutputDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
+# Resolve the output path at run time. $PSScriptRoot can be empty during parameter default evaluation in Windows PowerShell 5.1.
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $OutputDir = Join-Path -Path $scriptDirectory -ChildPath 'out'
+}
 $gameAssembly = Join-Path $GameDir 'Stonewards_Data\Managed\Assembly-CSharp.dll'
 if (-not (Test-Path -LiteralPath $gameAssembly)) {
     throw "Assembly-CSharp.dll not found: $gameAssembly"

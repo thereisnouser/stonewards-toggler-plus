@@ -7,17 +7,26 @@ $ErrorActionPreference = 'Stop'
 $repoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $managedDir = Join-Path $GameDir 'Stonewards_Data\Managed'
 $bepInExDir = if ($ProfileDir) { Join-Path $ProfileDir 'BepInEx' } else { Join-Path $GameDir 'BepInEx' }
-if (-not (Test-Path (Join-Path $managedDir 'Assembly-CSharp.dll'))) { throw "Game Assembly-CSharp.dll not found: $managedDir" }
-if (-not (Test-Path (Join-Path $bepInExDir 'core\BepInEx.dll'))) { throw "BepInEx.dll not found in $bepInExDir" }
+$coreDir = Join-Path $bepInExDir 'core'
 
-$pluginProject = Join-Path $repoDir 'StonewardsTogglerDiagnostics.csproj'
-$gameArg = "-p:GameDir=$GameDir"
-$coreArg = "-p:BepInExCoreDir=$(Join-Path $bepInExDir 'core')"
-& dotnet build $pluginProject -c Release $gameArg $coreArg --nologo
-if ($LASTEXITCODE -ne 0) { throw 'Build failed: nothing installed.' }
-$dll = Join-Path $repoDir 'bin\Release\netstandard2.1\StonewardsTogglerDiagnostics.dll'
-$dest = Join-Path $bepInExDir 'plugins\StonewardsTogglerDiagnostics'
+foreach ($file in @(
+    (Join-Path $managedDir 'Assembly-CSharp.dll'),
+    (Join-Path $managedDir 'UnityEngine.UIElementsModule.dll'),
+    (Join-Path $coreDir 'BepInEx.dll'),
+    (Join-Path $coreDir '0Harmony.dll')
+)) {
+    if (-not (Test-Path -LiteralPath $file)) { throw "Required dependency not found: $file" }
+}
+
+$project = Join-Path $repoDir 'StonewardsTogglerPlus.csproj'
+Write-Host 'Building Stonewards Toggler Plus...'
+& dotnet build $project -c Release "-p:GameDir=$GameDir" "-p:BepInExCoreDir=$coreDir" --nologo
+if ($LASTEXITCODE -ne 0) { throw 'Build failed; no plugin was installed.' }
+
+$dll = Join-Path $repoDir 'bin\Release\netstandard2.1\StonewardsTogglerPlus.dll'
+if (-not (Test-Path -LiteralPath $dll)) { throw "Compiled DLL not found: $dll" }
+$dest = Join-Path $bepInExDir 'plugins\StonewardsTogglerPlus'
 New-Item -ItemType Directory -Path $dest -Force | Out-Null
-Copy-Item -LiteralPath $dll -Destination (Join-Path $dest 'StonewardsTogglerDiagnostics.dll') -Force
-Write-Host "Installed diagnostics at $dest" -ForegroundColor Green
-Write-Host "Run the game and retrieve BepInEx\config\StonewardsTogglerDiagnostics.upgrades.txt from the active profile."
+Copy-Item -LiteralPath $dll -Destination (Join-Path $dest 'StonewardsTogglerPlus.dll') -Force
+Write-Host "Installed Stonewards Toggler Plus at $dest" -ForegroundColor Green
+Write-Host 'Launch the game with this r2modman profile. Check BepInEx/LogOutput.log for Toggler Plus logs.'

@@ -160,6 +160,14 @@ namespace StonewardsTogglerPlus
                     if (!(_buttonCanClick.GetValue(element) is bool canClick) || !canClick)
                         continue; // Selected upgrade preview is not a shop-list button.
 
+                    // Handle game versions that already show defaults but hide their
+                    // native toggle. This also avoids adding a duplicate card.
+                    if (attachedUpgrade != null &&
+                        ReadString(attachedUpgrade, "UpgradeCategory") != null &&
+                        !ReadBool(attachedUpgrade, "Unlockable", true) &&
+                        !ReadBool(attachedUpgrade, "HiddenUpgrade", false))
+                        RefreshAddedToggle(element);
+
                     var category = ReadString(attachedUpgrade, "Category");
                     if ((category == "LEVELUP" || category == "PICKUP") &&
                         !categoryParents.ContainsKey(category))

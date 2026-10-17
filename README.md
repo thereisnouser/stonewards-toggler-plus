@@ -2,7 +2,7 @@
 
 A BepInEx 5 mod for **Stonewards** that extends the game's built-in **Toggler** to include **default rings and tomes**. The additional entries are created using Stonewards' own `UnlockUpgradeButton` component and `unlockableButtonTemplate` UXML, not a separate custom UI.
 
-> **Status: 0.1.0 — test build, not yet verified in game.** This source has been implemented from disassembled method signatures/IL from the current Stonewards build. Compilation and in-game behavior still require testing.
+> **Version: 0.1.0 — locally confirmed working.** The mod's default ring/tome toggles were tested in Stonewards. The experimental per-class changes have been removed from this release.
 
 ## What it does
 
@@ -42,6 +42,30 @@ Launch Stonewards using that r2modman profile. The script installs:
 The module should print `Toggler Plus initialized` in `BepInEx\LogOutput.log`. When the shop opens, it logs counts of new `LEVELUP` and `PICKUP` cards.
 
 If you have not purchased the in-game Toggler upgrade, purchase it first. The mod does not grant it for free.
+
+## Build Thunderstore v0.1.0 package
+
+The release assets are kept in `thunderstore/`. Run this from the repo root:
+
+```powershell
+git pull --ff-only
+
+powershell -ExecutionPolicy Bypass -File .\package-thunderstore.ps1 `
+  -GameDir "F:\Steam\steamapps\common\Stonewards" `
+  -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
+```
+
+The script recompiles the restored `0.1.0` sources and creates `dist/TogglerPlus-0.1.0.zip`. This archive contains `manifest.json`, `README.md`, `CHANGELOG.md`, `icon.png` (256x256), and `plugins/StonewardsTogglerPlus.dll`.
+
+Upload the resulting ZIP to the Stonewards community on [Thunderstore](https://thunderstore.io/c/stonewards/). Select the correct author/team account. Publishing requires a Thunderstore account and cannot be done by this local script.
+
+Optional GitHub release, using GitHub CLI:
+
+```powershell
+gh release create v0.1.0 .\dist\TogglerPlus-0.1.0.zip `
+  --title "Toggler Plus v0.1.0" `
+  --notes "First release: adds default rings and tomes to the vanilla Stonewards Toggler."
+```
 
 ## Test checklist
 

@@ -6,6 +6,9 @@ param(
     [switch]$SkipBuild
 )
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $repoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {

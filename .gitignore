@@ -17,3 +17,6 @@ Stonewards_Data/
 # Local IDE state
 .idea/
 .vscode/
+
+# Release archives
+dist/

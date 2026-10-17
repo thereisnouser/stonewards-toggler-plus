@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace StonewardsTogglerPlus
 {
-    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.0")]
+    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.1.0")]
     public sealed class TogglerPlusPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.thereisnouser.stonewards.togglerplus";
@@ -81,10 +81,7 @@ namespace StonewardsTogglerPlus
             Patch("RebuildShopButtons", nameof(AfterMenuBuilt), null);
             Patch("Show", nameof(AfterShow), new[] { typeof(bool) });
 
-            // Class-scoped rules use their own BepInEx config and affect only ring drafts.
-            ClassRingRules.Initialize(this, _harmony, _buttonType, _buttonUnlockable, _getTogglerLevel);
-
-            Logger.LogInfo("Toggler Plus initialized. Default rings/tomes and per-class ring toggles are enabled.");
+            Logger.LogInfo("Toggler Plus initialized. Default rings/tomes will be added to the existing shop UI.");
         }
 
         private void Patch(string methodName, string postfixName, Type[] arguments)
@@ -179,8 +176,6 @@ namespace StonewardsTogglerPlus
 
                 AppendCategory(menu, manager, template, categoryParents, alreadyPresent, 0, "LEVELUP");
                 AppendCategory(menu, manager, template, categoryParents, alreadyPresent, 1, "PICKUP");
-
-                ClassRingRules.AttachSelector(menu, root, categoryParents);
             }
             catch (Exception ex)
             {

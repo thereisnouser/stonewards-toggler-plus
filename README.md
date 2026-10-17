@@ -1,5 +1,7 @@
 # Stonewards Toggler Plus
 
+<img src="thunderstore/icon.png" alt="Toggler Plus icon" width="96" />
+
 A BepInEx 5 mod for **Stonewards** that extends the game's built-in **Toggler** to include **default rings and tomes**. The additional entries are created using Stonewards' own `UnlockUpgradeButton` component and `unlockableButtonTemplate` UXML, not a separate custom UI.
 
 > **Version: 0.1.0 — locally confirmed working.** The mod's default ring/tome toggles were tested in Stonewards. The experimental per-class changes have been removed from this release.

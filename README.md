@@ -1,114 +1,81 @@
-# Stonewards Toggler Plus
+# Stonewards TogglerPlus
 
-<img src="thunderstore/icon.png" alt="Toggler Plus icon" width="96" />
+**Choose which default rings and tomes can appear in your Stonewards runs.** TogglerPlus extends the game's built-in Toggler to cover regular starting upgrades while keeping the original shop interface and persistence system.
 
-A BepInEx 5 mod for **Stonewards** that extends the game's built-in **Toggler** to include **default rings and tomes**. The additional entries are created using Stonewards' own `UnlockUpgradeButton` component and `unlockableButtonTemplate` UXML, not a separate custom UI.
+## ✨ Features
 
-> **Version: 0.1.0 — locally confirmed working.** The mod's default ring/tome toggles were tested in Stonewards. The experimental per-class changes have been removed from this release.
+- **Default rings and tomes** — add eligible default (non-unlockable, non-hidden) upgrades to their corresponding shop categories.
+- **Original Toggler controls** — use the game's own upgrade cards and checkboxes instead of a separate mod menu.
+- **Vanilla progression** — checkboxes become available only after you purchase the in-game Toggler upgrade.
+- **Saved availability choices** — toggled upgrades use Stonewards' existing persistent blacklist and are filtered from newly generated reward selections.
+- **Native UI integration** — existing unlockable upgrades remain available; the mod avoids duplicate cards and does not expose hidden upgrades.
 
-## What it does
+## 🎮 How to use
 
-- Adds eligible default (non-unlockable, non-hidden) rings and tomes to the corresponding original shop sections, where the original UI does not already contain them.
-- Makes the existing checkbox available on these cards **only when the in-game Toggler upgrade has been purchased**.
-- Calls the game's own `UpgradeManager.ToggleUpgradeAvailability`; disabled upgrades are stored in the native `ShopData` blacklist. No new save format, custom config, or direct save-file editing.
-- Preserves normal unlockable upgrade buttons and the game's own reward-pool filtering.
-- Leaves hidden upgrades excluded. Filters eligibility through `UpgradeManager.GetAvailableUpgrades` to avoid showing unavailable items.
-- Has safety checks and writes diagnostic messages to the BepInEx log if the game UI/API differs.
+1. Unlock the **Toggler** through normal Stonewards progression. The mod does **not** unlock it for free.
+2. Open the game's original upgrade/unlock shop.
+3. Find eligible default **rings** and **tomes** alongside the normal entries in their respective categories.
+4. Use the original Toggler checkboxes to disable upgrades you do not want to receive.
+5. Start a new run or generate a new upgrade choice to see the updated availability. Re-enable an upgrade to make it eligible again under the game's normal rules.
 
-**Known limitation:** The UI integration locates each category's original grid by an existing native ring/tome card. If a category has no original card available as an anchor, the mod logs a warning and leaves that section unchanged rather than placing cards in the wrong container. This is to be tested.
+The mod works within the existing interface. There are **no additional hotkeys, panels, or mod-specific settings**.
 
-## Requirements
+**Before uninstalling:** re-enable any default rings or tomes you want to be able to receive again. Removing the plugin does not clear the blacklist saved by the game.
 
-- Stonewards (build matching the inspected game methods).
-- BepInEx 5 installed through r2modman.
-- .NET SDK for compiling the mod.
+## 📦 Installation
 
-Keep the r2modman profile name identical to this repo: `stonewards-toggler-plus`.
+Install **TogglerPlus** from the Stonewards Thunderstore community using **r2modman** or another compatible mod manager once the package is published. Launch the game using your modded profile. The package declares **BepInExPack 5** as a dependency.
 
-## Build and install (Windows PowerShell)
+The local r2modman development profile in this repository is named `stonewards-toggler-plus`.
 
-Open PowerShell in the cloned repository and run:
+For a source build, follow the commands in the [Development](#-development) section below.
+
+## 🔧 Compatibility
+
+- **Game:** Stonewards, using the upgrade shop and Toggler APIs examined during development. Compatibility after game changes has not been confirmed.
+- **Mod loader:** BepInEx 5 (Thunderstore dependency: `BepInEx-BepInExPack-5.4.2305`).
+- **Multiplayer:** The plugin changes the local upgrade shop and uses the game's existing availability data. Multiplayer behavior has not been separately verified.
+
+## ⚠️ Known limitations
+
+- A category must have an existing native ring/tome upgrade card for the mod to identify the correct grid. If none is available, the mod skips that category instead of inserting cards into an uncertain location.
+- Disabling an upgrade affects **future reward selections**, not upgrades already offered or obtained in an ongoing run.
+- **Saved blacklist entries persist after uninstall.** Re-enable your defaults in the Toggler before removing the mod.
+- Changes to the game's upgrade shop or Toggler APIs may require an update.
+
+## 🛠️ Development
+
+TogglerPlus is a BepInEx 5 / Harmony plugin targeting `netstandard2.1`. It integrates with `UnlockableMenu`, reuses the game's `UnlockUpgradeButton` and UXML template, and enables the original checkboxes when the purchased Toggler level permits it. The game's own `UpgradeManager.ToggleUpgradeAvailability` and `ShopData` blacklist handle saved choices; the mod does not introduce a separate save format.
+
+The repository's release build uses `src/TogglerPlusPlugin.cs`. The optional diagnostics plugin and IL inspector are development utilities, **not** extra released TogglerPlus features.
+
+### Building
+
+You need Stonewards, .NET SDK, Windows PowerShell, and a BepInEx 5 profile. Close the game before installing the plugin.
 
 ```powershell
-git pull --ff-only
+$gameDir = "C:\path\to\Stonewards"
+$profileDir = Join-Path $env:APPDATA "r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
 
 powershell -ExecutionPolicy Bypass -File .\build-and-install.ps1 `
-  -GameDir "F:\Steam\steamapps\common\Stonewards" `
-  -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
+  -GameDir $gameDir `
+  -ProfileDir $profileDir
 ```
 
-Launch Stonewards using that r2modman profile. The script installs:
-
-`BepInEx\plugins\StonewardsTogglerPlus\StonewardsTogglerPlus.dll`
-
-The module should print `Toggler Plus initialized` in `BepInEx\LogOutput.log`. When the shop opens, it logs counts of new `LEVELUP` and `PICKUP` cards.
-
-If you have not purchased the in-game Toggler upgrade, purchase it first. The mod does not grant it for free.
-
-## Build Thunderstore v0.1.0 package
-
-The release assets are kept in `thunderstore/`. Run this from the repo root:
+To compile and create a Thunderstore archive:
 
 ```powershell
-git pull --ff-only
-
 powershell -ExecutionPolicy Bypass -File .\package-thunderstore.ps1 `
-  -GameDir "F:\Steam\steamapps\common\Stonewards" `
-  -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
+  -GameDir $gameDir `
+  -ProfileDir $profileDir
 ```
 
-The script recompiles the restored `0.1.0` sources and creates `dist/TogglerPlus-0.1.0.zip`. This archive contains `manifest.json`, `README.md`, `CHANGELOG.md`, `icon.png` (256x256), and `plugins/StonewardsTogglerPlus.dll`.
+The resulting package is written to `dist/TogglerPlus-<version>.zip` and includes the compiled plugin, manifest, dedicated Thunderstore README, changelog, and icon. The script does **not** publish to Thunderstore.
 
-Upload the resulting ZIP to the Stonewards community on [Thunderstore](https://thunderstore.io/c/stonewards/). Select the correct author/team account. Publishing requires a Thunderstore account and cannot be done by this local script.
+## 🔗 Links
 
-Optional GitHub release, using GitHub CLI:
+[Thunderstore description](thunderstore/README.md) · [Changelog](thunderstore/CHANGELOG.md) · [Report an issue](https://github.com/thereisnouser/stonewards-toggler-plus/issues)
 
-```powershell
-gh release create v0.1.0 .\dist\TogglerPlus-0.1.0.zip `
-  --title "Toggler Plus v0.1.0" `
-  --notes "First release: adds default rings and tomes to the vanilla Stonewards Toggler."
-```
+---
 
-## Test checklist
-
-1. Open the original upgrade/unlock shop.
-2. Confirm default rings and tomes are displayed in their respective sections, styled like standard entries.
-3. Verify checkbox visibility when the built-in Toggler upgrade is purchased; check its hidden state before purchase.
-4. Disable one default ring and one default tome. Close/reopen the shop, then restart the game and confirm both remain disabled.
-5. Enter a **new** run (or refresh the upgrade draft); verify neither item is offered in its relevant reward pool.
-6. Re-enable both, then verify they are eligible for rewards again.
-7. Confirm normal unlockable upgrades and selection details still work.
-
-If the cards are missing, or an error occurs, share the build output and the Toggler Plus lines from `BepInEx\LogOutput.log`. Disable the mod if it interferes with the UI.
-
-## Uninstall
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 `
-  -GameDir "F:\Steam\steamapps\common\Stonewards" `
-  -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
-```
-
-Uninstalling removes the mod DLL but **does not clear blacklist selections** already saved by the game. To restore default availability, re-enable those items in the in-game Toggler before uninstalling.
-
-## Developer notes
-
-The original game code already filters blacklisted upgrades in:
-
-- `RogueLikeUpgradeManager.CreateValidLevelupDraftPool()`
-- `RogueLikeUpgradeManager.CreateValidPickupDraftPool()`
-
-And the standard UI toggle invokes `UpgradeManager.ToggleUpgradeAvailability(ID)`, which updates `ShopData.blacklistedLevelupUpgradeIDs` / `ShopData.blacklistedPickupUpgradeIDs`.
-
-Source files:
-
-- `src/TogglerPlusPlugin.cs` — actual test mod (default build target).
-- `src/DiagnosticsPlugin.cs` — optional read-only runtime inspector.
-- `inspect-game.ps1` — Mono.Cecil IL inspector. Run after a game update to verify the integration points.
-- `StonewardsTogglerDiagnostics.csproj` — optional diagnostic project; isolated from the actual mod build.
-
-Generated IL reports, game binaries, and save files are not committed.
-
-## License
-
-No game assets or game binaries are distributed in this repository.
+*Made by thereisnouser*

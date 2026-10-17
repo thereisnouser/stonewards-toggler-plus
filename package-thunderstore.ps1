@@ -71,9 +71,12 @@ try {
     Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $output -CompressionLevel Optimal
     $files = [System.IO.Compression.ZipFile]::OpenRead($output)
     try {
-        $names = @($files.Entries | ForEach-Object { $_.FullName.Replace('\\','/') })
+        # Normalize Windows ZIP entry paths (backslash) to forward slashes for validation.
+        $names = @($files.Entries | ForEach-Object { $_.FullName.Replace([char]92, [char]47) })
         foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'plugins/StonewardsTogglerPlus.dll')) {
-            if ($names -notcontains $required) { throw "Generated ZIP missing: $required" }
+            if ($names -notcontains $required) {
+                throw "Generated ZIP missing: $required. Actual entries: $($names -join ', ')"
+            }
         }
     } finally { $files.Dispose() }
     Write-Host 'Thunderstore package created successfully:' -ForegroundColor Green

@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace StonewardsTogglerPlus
 {
-    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.0")]
+    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.1.0")]
     public sealed class TogglerPlusPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.thereisnouser.stonewards.togglerplus";
@@ -81,9 +81,7 @@ namespace StonewardsTogglerPlus
             Patch("RebuildShopButtons", nameof(AfterMenuBuilt), null);
             Patch("Show", nameof(AfterShow), new[] { typeof(bool) });
 
-            ClassRingRules.Initialize(this, _harmony, _buttonType, _buttonUnlockable, _getTogglerLevel);
-
-            Logger.LogInfo("Toggler Plus v0.2.0 initialized. Default rings/tomes and per-class ring bans are enabled.");
+            Logger.LogInfo("Toggler Plus initialized. Default rings/tomes will be added to the existing shop UI.");
         }
 
         private void Patch(string methodName, string postfixName, Type[] arguments)
@@ -170,9 +168,7 @@ namespace StonewardsTogglerPlus
                         !ReadBool(attachedUpgrade, "HiddenUpgrade", false))
                         RefreshAddedToggle(element);
 
-                    // UpgradeCategory is LEVELUP/PICKUP. IUnlockable.Category
-                    // is a different enum and cannot identify the ring/tome tab.
-                    var category = ReadString(attachedUpgrade, "UpgradeCategory");
+                    var category = ReadString(attachedUpgrade, "Category");
                     if ((category == "LEVELUP" || category == "PICKUP") &&
                         !categoryParents.ContainsKey(category))
                         categoryParents.Add(category, element.parent);
@@ -180,8 +176,6 @@ namespace StonewardsTogglerPlus
 
                 AppendCategory(menu, manager, template, categoryParents, alreadyPresent, 0, "LEVELUP");
                 AppendCategory(menu, manager, template, categoryParents, alreadyPresent, 1, "PICKUP");
-
-                ClassRingRules.AttachSelector(menu, root);
             }
             catch (Exception ex)
             {

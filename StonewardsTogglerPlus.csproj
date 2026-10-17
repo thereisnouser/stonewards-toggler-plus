@@ -3,18 +3,13 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyName>StonewardsTogglerPlus</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.1.0</Version>
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <BepInExCoreDir Condition="'$(BepInExCoreDir)' == ''">$(GameDir)\BepInEx\core</BepInExCoreDir>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src\TogglerPlusPlugin.cs" />
-    <Compile Include="src\ClassRingRules.cs" />
-    <Reference Include="Assembly-CSharp">
-      <HintPath>$(GameDir)\Stonewards_Data\Managed\Assembly-CSharp.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
     <Reference Include="BepInEx">
       <HintPath>$(BepInExCoreDir)\BepInEx.dll</HintPath>
       <Private>false</Private>

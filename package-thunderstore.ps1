@@ -24,6 +24,16 @@ $core = if ($ProfileDir) {
 }
 $dll = Join-Path $repoDir 'bin\Release\netstandard2.1\StonewardsTogglerPlus.dll'
 
+# Never accidentally label an experimental 0.2.0 build as stable 0.1.0.
+[xml]$projectXml = Get-Content -LiteralPath $project -Raw
+$sourceVersion = [string]$projectXml.Project.PropertyGroup.Version
+$manifestPath = Join-Path $releaseFiles 'manifest.json'
+$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+if ($sourceVersion -ne [string]$manifest.version_number) {
+    throw "Source version $sourceVersion does not match Thunderstore manifest $($manifest.version_number). " +
+          "For the stable 0.1.0 release, switch to the release/0.1.0 branch."
+}
+
 if (-not (Test-Path -LiteralPath $project)) { throw "Project not found: $project" }
 if (-not (Test-Path -LiteralPath (Join-Path $core 'BepInEx.dll'))) { throw "BepInEx not found: $core" }
 if (-not (Test-Path -LiteralPath (Join-Path $GameDir 'Stonewards_Data\Managed\Assembly-CSharp.dll'))) { throw "Game DLL not found: $GameDir" }

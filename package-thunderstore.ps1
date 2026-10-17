@@ -43,53 +43,7 @@ $projectSource = Get-Content -LiteralPath $project -Raw
 $pluginMatch = [regex]::Match($pluginSource, '\[BepInPlugin\(PluginGuid,\s*"Stonewards Toggler Plus",\s*"([^"]+)"\)\]')
 $projectMatch = [regex]::Match($projectSource, '<Version>([^<]+)</Version>')
 if ($manifest.name -ne 'TogglerPlus' -or
-    $manifest.version_number -notmatch '^\d+\.\d+\.\d+
-
-# Reject an accidentally stale experimental class-specific build.
-$assemblyBytes = [System.IO.File]::ReadAllBytes($dll)
-$utf8Text = [System.Text.Encoding]::UTF8.GetString($assemblyBytes)
-if ($utf8Text.Contains('ClassRingRules')) {
-    throw 'This DLL contains experimental class-specific rules. Delete bin/obj and rebuild from the restored 0.1.0 sources.'
-}
-
-$temp = Join-Path ([System.IO.Path]::GetTempPath()) ('stonewards-tp-release-' + [Guid]::NewGuid().ToString('N'))
-$plugins = Join-Path $temp 'plugins'
-New-Item -ItemType Directory -Path $plugins -Force | Out-Null
-try {
-    foreach ($name in @('manifest.json', 'README.md', 'CHANGELOG.md', 'icon.png')) {
-        $from = Join-Path $releaseFiles $name
-        if (-not (Test-Path -LiteralPath $from)) { throw "Thunderstore asset missing: $from" }
-        Copy-Item -LiteralPath $from -Destination (Join-Path $temp $name)
-    }
-    Copy-Item -LiteralPath $dll -Destination (Join-Path $plugins 'StonewardsTogglerPlus.dll')
-
-    $icon = [System.Drawing.Image]::FromFile((Join-Path $temp 'icon.png'))
-    try {
-        if ($icon.Width -ne 256 -or $icon.Height -ne 256) {
-            throw 'Thunderstore icon must be exactly 256 x 256 pixels.'
-        }
-    } finally { $icon.Dispose() }
-
-    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
-    $output = Join-Path $OutputDir ('TogglerPlus-' + $manifest.version_number + '.zip')
-    if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Force }
-    Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $output -CompressionLevel Optimal
-    $files = [System.IO.Compression.ZipFile]::OpenRead($output)
-    try {
-        # Normalize Windows ZIP entry paths (backslash) to forward slashes for validation.
-        $names = @($files.Entries | ForEach-Object { $_.FullName.Replace([char]92, [char]47) })
-        foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'plugins/StonewardsTogglerPlus.dll')) {
-            if ($names -notcontains $required) {
-                throw "Generated ZIP missing: $required. Actual entries: $($names -join ', ')"
-            }
-        }
-    } finally { $files.Dispose() }
-    Write-Host 'Thunderstore package created successfully:' -ForegroundColor Green
-    Write-Host $output
-} finally {
-    if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
-}
- -or
+    $manifest.version_number -notmatch '^\d+\.\d+\.\d+$' -or
     -not $pluginMatch.Success -or -not $projectMatch.Success -or
     $pluginMatch.Groups[1].Value -ne $manifest.version_number -or
     $projectMatch.Groups[1].Value -ne $manifest.version_number) {
@@ -104,7 +58,7 @@ if ($releaseChangelog -notmatch ('(?m)^##\s+' + [regex]::Escape($manifest.versio
 $assemblyBytes = [System.IO.File]::ReadAllBytes($dll)
 $utf8Text = [System.Text.Encoding]::UTF8.GetString($assemblyBytes)
 if ($utf8Text.Contains('ClassRingRules')) {
-    throw 'This DLL contains experimental class-specific rules. Delete bin/obj and rebuild from the restored 0.1.0 sources.'
+    throw 'This DLL contains experimental class-specific rules. Delete bin/obj and rebuild from the stable sources.'
 }
 
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ('stonewards-tp-release-' + [Guid]::NewGuid().ToString('N'))

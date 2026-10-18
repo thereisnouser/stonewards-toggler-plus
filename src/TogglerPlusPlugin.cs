@@ -83,7 +83,7 @@ namespace StonewardsTogglerPlus
 
             ClassRingRules.Initialize(this, _harmony, _buttonType, _buttonUnlockable, _getTogglerLevel);
 
-            Logger.LogInfo("Toggler Plus v0.2.0 initialized. Default rings/tomes and per-class ring bans are enabled.");
+            Logger.LogInfo("Toggler Plus v0.2.0 initialized. Per-class ring/tome overrides are enabled.");
         }
 
         private void Patch(string methodName, string postfixName, Type[] arguments)

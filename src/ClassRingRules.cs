@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -20,6 +21,7 @@ namespace StonewardsTogglerPlus
         private const string SelectorName = "stonewards-tp-class-selector";
 
         private static BaseUnityPlugin _plugin;
+        private static ManualLogSource _log;
         private static Type _nativeButtonType;
         private static FieldInfo _buttonUpgrade;
         private static FieldInfo _buttonCanClick;
@@ -44,6 +46,7 @@ namespace StonewardsTogglerPlus
             FieldInfo buttonUpgrade, MethodInfo getTogglerLevel)
         {
             _plugin = plugin;
+            _log = BepInEx.Logging.Logger.CreateLogSource("StonewardsTogglerPlus.ClassRingRules");
             _nativeButtonType = nativeButtonType;
             _buttonUpgrade = buttonUpgrade;
             _buttonCanClick = AccessTools.Field(nativeButtonType, "canClick");
@@ -75,14 +78,14 @@ namespace StonewardsTogglerPlus
             Patch(harmony, AccessTools.Method(rogueManager, "CreateValidLevelupDraftPool"),
                 nameof(AfterCreateRingDraftPool), prefix: false);
 
-            plugin.Logger.LogInfo("Per-class ring rules initialized for " + Entries.Count + " classes.");
+            _log.LogInfo("Per-class ring rules initialized for " + Entries.Count + " classes.");
         }
 
         private static void Patch(Harmony harmony, MethodInfo target, string handler, bool prefix)
         {
             if (target == null)
             {
-                _plugin.Logger.LogWarning("Class-ring patch target missing: " + handler);
+                _log.LogWarning("Class-ring patch target missing: " + handler);
                 return;
             }
 
@@ -95,7 +98,7 @@ namespace StonewardsTogglerPlus
             }
             catch (Exception ex)
             {
-                _plugin.Logger.LogError("Could not install " + handler + ": " + ex);
+                _log.LogError("Could not install " + handler + ": " + ex);
             }
         }
 

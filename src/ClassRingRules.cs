@@ -399,25 +399,30 @@ namespace StonewardsTogglerPlus
                 row.style.marginBottom = 4;
                 frame.Add(row);
 
-                AddModeButton(panel, row, category, "All classes", null);
+                AddModeButton(panel, row, category, "ALL", null);
 
                 var archetypeField = AccessTools.Field(menu.GetType(), "archetypeDatabaseSo");
                 var archetypes = archetypeField?.GetValue(menu) as PlayerArchetypeDatabaseSO;
                 foreach (PlayerClass cls in Enum.GetValues(typeof(PlayerClass)))
                 {
+                    // Use the SAME character sprite used by the game's ring
+                    // exclusivity icons (PlayerArchetypeSO.Icon).
+                    Sprite classIcon = null;
                     if (archetypes != null)
                     {
                         try
                         {
-                            if (archetypes.GetPlayerArchetype(cls) == null)
+                            var archetype = archetypes.GetPlayerArchetype(cls);
+                            if (archetype == null)
                                 continue;
+                            classIcon = archetype.Icon;
                         }
                         catch { continue; }
                     }
-                    AddModeButton(panel, row, category, cls.ToString(), cls);
+                    AddModeButton(panel, row, category, cls.ToString(), cls, classIcon);
                 }
 
-                var hint = new Label("All classes: default  |  Class: override");
+                var hint = new Label("ALL: default  |  Class: override");
                 hint.style.fontSize = 15;
                 hint.style.color = new Color(0.85f, 0.85f, 0.85f, 1f);
                 hint.style.marginTop = 6;
@@ -450,7 +455,7 @@ namespace StonewardsTogglerPlus
         }
 
         private static void AddModeButton(SelectorPanel panel, VisualElement row,
-            UpgradeCategory category, string text, PlayerClass? cls)
+            UpgradeCategory category, string text, PlayerClass? cls, Sprite icon = null)
         {
             // Draw a REAL stepped pixel border. UI Toolkit borderRadius produces
             // smooth curves, so construct five horizontal strips at stepped insets
@@ -465,8 +470,10 @@ namespace StonewardsTogglerPlus
             button.RemoveFromClassList("unity-button");
             button.style.position = Position.Relative;
             button.style.height = 46;
-            button.style.width = text == "All classes"
-                ? 146 : Math.Max(90, text.Length * 12 + 29);
+            // Budget for the sprite + label; wrapping remains enabled for small screens.
+            button.style.width = cls.HasValue
+                ? Math.Max(104, text.Length * 11 + (icon != null ? 49 : 26))
+                : 86;
             button.style.marginRight = 6;
             button.style.marginBottom = 6;
             button.style.paddingLeft = 0;
@@ -493,17 +500,37 @@ namespace StonewardsTogglerPlus
             tab.Surface.Add(Slice(button, 8, 8, -1, 6, 5));
             tab.Surface.Add(Slice(button, 13, 13, -1, 2, 4));
 
+            // Center icon and text together, not independently. Child elements
+            // ignore picking so the full stepped tab remains clickable.
+            var content = new VisualElement { pickingMode = PickingMode.Ignore };
+            content.style.position = Position.Absolute;
+            content.style.left = 7;
+            content.style.right = 7;
+            content.style.top = 0;
+            content.style.bottom = 0;
+            content.style.flexDirection = FlexDirection.Row;
+            content.style.alignItems = Align.Center;
+            content.style.justifyContent = Justify.Center;
+            button.Add(content);
+
+            if (cls.HasValue && icon != null)
+            {
+                var classIcon = new VisualElement { pickingMode = PickingMode.Ignore };
+                classIcon.style.width = 26;
+                classIcon.style.height = 26;
+                classIcon.style.flexShrink = 0;
+                classIcon.style.marginRight = 5;
+                classIcon.style.backgroundImage = new StyleBackground(icon);
+                content.Add(classIcon);
+            }
+
             var caption = new Label(text);
             caption.pickingMode = PickingMode.Ignore;
-            caption.style.position = Position.Absolute;
-            caption.style.left = 0;
-            caption.style.right = 0;
-            caption.style.top = 0;
-            caption.style.bottom = 0;
             caption.style.fontSize = 19;
             caption.style.unityFontStyleAndWeight = FontStyle.Bold;
             caption.style.unityTextAlign = TextAnchor.MiddleCenter;
-            button.Add(caption);
+            caption.style.flexShrink = 0;
+            content.Add(caption);
             tab.Caption = caption;
 
             row.Add(button);
@@ -536,7 +563,7 @@ namespace StonewardsTogglerPlus
             {
                 bool active = selected.HasValue
                     ? item.Key == selected.Value.ToString()
-                    : item.Key == "All classes";
+                    : item.Key == "ALL";
 
                 var tab = item.Value;
                 Color border = active

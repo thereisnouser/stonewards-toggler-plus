@@ -297,24 +297,29 @@ namespace StonewardsTogglerPlus
 
             _selector = new VisualElement { name = SelectorName };
             _selector.style.flexDirection = FlexDirection.Column;
-            _selector.style.marginTop = 5;
-            _selector.style.marginBottom = 7;
-            _selector.style.paddingTop = 5;
-            _selector.style.paddingBottom = 5;
-            _selector.style.paddingLeft = 7;
-            _selector.style.paddingRight = 7;
-            _selector.style.backgroundColor = new Color(0.08f, 0.11f, 0.14f, 0.68f);
+            _selector.style.marginTop = 8;
+            _selector.style.marginBottom = 12;
+            _selector.style.paddingTop = 7;
+            _selector.style.paddingBottom = 10;
+            _selector.style.paddingLeft = 6;
+            _selector.style.paddingRight = 6;
+            // Match the native shop: no separate opaque "debug panel".
+            _selector.style.backgroundColor = Color.clear;
+            _selector.style.borderBottomWidth = 1;
+            _selector.style.borderBottomColor = new Color(0.53f, 0.48f, 0.34f, 0.9f);
 
             var title = new Label("RING TOGGLER - CLASS");
-            title.style.color = new Color(0.93f, 0.88f, 0.70f);
-            title.style.fontSize = 12;
-            title.style.marginBottom = 3;
+            title.style.color = new Color(0.97f, 0.82f, 0.52f, 1f);
+            title.style.fontSize = 19;
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            title.style.marginBottom = 8;
             _selector.Add(title);
 
             var buttons = new VisualElement();
             buttons.style.flexDirection = FlexDirection.Row;
             buttons.style.flexWrap = Wrap.Wrap;
             buttons.style.alignItems = Align.Center;
+            buttons.style.marginBottom = 2;
             _selector.Add(buttons);
 
             AddModeButton(buttons, "All classes", null);
@@ -336,10 +341,10 @@ namespace StonewardsTogglerPlus
                 AddModeButton(buttons, cls.ToString(), cls);
             }
 
-            var hint = new Label("All classes = global bans. Class tabs = additional bans. Global bans always win.");
-            hint.style.fontSize = 10;
-            hint.style.color = new Color(0.74f, 0.76f, 0.78f);
-            hint.style.marginTop = 3;
+            var hint = new Label("All classes: global bans  |  Class: additional bans");
+            hint.style.fontSize = 13;
+            hint.style.color = new Color(0.79f, 0.81f, 0.82f, 1f);
+            hint.style.marginTop = 5;
             _selector.Add(hint);
 
             container.Insert(container.IndexOf(ringGrid), _selector);
@@ -356,13 +361,19 @@ namespace StonewardsTogglerPlus
                 RefreshAllRingChecks(_shopRoot);
             }) { text = label };
 
-            button.style.fontSize = 11;
-            button.style.height = 24;
-            button.style.marginRight = 3;
-            button.style.marginBottom = 3;
-            button.style.paddingLeft = 8;
-            button.style.paddingRight = 8;
-            button.style.borderBottomWidth = 1;
+            // In-game tab proportions and legibility at 1080p and 1440p.
+            button.style.fontSize = 16;
+            button.style.unityFontStyleAndWeight = FontStyle.Bold;
+            button.style.unityTextAlign = TextAnchor.MiddleCenter;
+            button.style.height = 38;
+            button.style.minWidth = 70;
+            button.style.marginRight = 5;
+            button.style.marginBottom = 5;
+            button.style.paddingLeft = 11;
+            button.style.paddingRight = 11;
+            button.style.paddingTop = 3;
+            button.style.paddingBottom = 3;
+            button.style.borderBottomWidth = 2;
             button.style.borderTopWidth = 1;
             button.style.borderLeftWidth = 1;
             button.style.borderRightWidth = 1;
@@ -378,16 +389,18 @@ namespace StonewardsTogglerPlus
                     ? pair.Key == _selectedClass.Value.ToString()
                     : pair.Key == "All classes";
 
+                // Native Stonewards shop palette: slate-gray tabs with a dark,
+                // warm-highlighted selected state, rather than generic UI buttons.
                 pair.Value.style.backgroundColor = active
-                    ? new Color(0.45f, 0.34f, 0.18f, 0.96f)
-                    : new Color(0.15f, 0.19f, 0.23f, 0.85f);
+                    ? new Color(0.09f, 0.11f, 0.15f, 1f)
+                    : new Color(0.23f, 0.26f, 0.31f, 1f);
                 pair.Value.style.color = active
-                    ? new Color(1f, 0.91f, 0.71f)
-                    : new Color(0.85f, 0.88f, 0.89f);
+                    ? new Color(1f, 0.90f, 0.69f, 1f)
+                    : new Color(0.96f, 0.96f, 0.94f, 1f);
 
                 var border = active
-                    ? new Color(0.77f, 0.59f, 0.31f)
-                    : new Color(0.31f, 0.34f, 0.37f);
+                    ? new Color(0.90f, 0.72f, 0.42f, 1f)
+                    : new Color(0.48f, 0.48f, 0.44f, 1f);
                 pair.Value.style.borderTopColor = border;
                 pair.Value.style.borderBottomColor = border;
                 pair.Value.style.borderLeftColor = border;

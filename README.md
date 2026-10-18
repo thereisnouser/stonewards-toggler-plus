@@ -8,6 +8,7 @@
 - **Global controls** — use **All classes** to enable or disable an upgrade for everyone through the original saved Toggler blacklist.
 - **Per-class overrides** — explicitly allow or block rings and tomes for a selected character class, independently of the global setting.
 - **Independent categories** — Rings and Tomes have their own class selectors and override rules.
+- **Class-appropriate rings** — in a class tab, hide rings the game marks unavailable for that class; `All classes` still shows every ring.
 - **Persistent choices** — global settings use Stonewards' existing save data; per-class settings are saved in your BepInEx profile.
 - **Native-style interface** — pixel-stepped class buttons and the game's own upgrade cards, with no extra hotkeys or standalone menus.
 
@@ -23,6 +24,8 @@
 **Example:** Disable a ring under **All classes**, then select **Miner** and enable the same ring. That ring is allowed for Miner while remaining disabled for classes without an explicit override. The reverse also works: leave a ring enabled globally, then disable it for Miner.
 
 Class overrides are applied to **future local-player reward-pool generation**. They do not grant an upgrade, bypass normal class eligibility rules, or remove something already obtained.
+
+**Ring list filtering:** Stonewards' own `RogueLikeUpgradeSO.IsClassValid(PlayerClass)` determines which ring cards are visible for the selected class. Universal rings remain visible, while other classes' exclusive rings are hidden. Switching back to `All classes` restores the complete list. Hidden cards retain their existing settings. Tome visibility is unchanged.
 
 ## ⚙️ Configuration
 

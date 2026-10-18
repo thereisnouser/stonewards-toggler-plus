@@ -12,9 +12,9 @@ using UnityEngine.UIElements;
 namespace StonewardsTogglerPlus
 {
     /// <summary>
-    /// Per-class ring exclusions. Vanilla global ring/tome blacklist is untouched.
-    /// Every class gets a separate BepInEx config entry; only the local player's
-    /// level-up draft is filtered by these additional rules.
+    /// Class-specific allow/deny overrides for both rings and tomes.
+    /// Native global Toggler rules remain in ShopData. A class may override
+    /// a global ban, but ONLY within that player's reward-pool generation.
     /// </summary>
     internal static class ClassRingRules
     {
@@ -31,16 +31,21 @@ namespace StonewardsTogglerPlus
         private static MethodInfo _refreshToggle;
         private static MethodInfo _getTogglerLevel;
 
-        private static readonly Dictionary<PlayerClass, ConfigEntry<string>> Entries =
-            new Dictionary<PlayerClass, ConfigEntry<string>>();
-        private static readonly Dictionary<PlayerClass, HashSet<string>> Disabled =
-            new Dictionary<PlayerClass, HashSet<string>>();
-        private static readonly Dictionary<string, Button> SelectorButtons =
-            new Dictionary<string, Button>(StringComparer.Ordinal);
+        private sealed class Rules
+        {
+            internal ConfigEntry<string> AllowEntry;
+            internal ConfigEntry<string> DenyEntry;
+            internal HashSet<string> Allowed;
+            internal HashSet<string> Denied;
+        }
 
-        private static PlayerClass? _selectedClass;
+        private static readonly Dictionary<UpgradeCategory, Dictionary<PlayerClass, Rules>> PerClass =
+            new Dictionary<UpgradeCategory, Dictionary<PlayerClass, Rules>>();
+        private static readonly Dictionary<UpgradeCategory, PlayerClass?> Selected =
+            new Dictionary<UpgradeCategory, PlayerClass?>();
+
+        [ThreadStatic] private static UpgradeCategory? _draftScope;
         private static VisualElement _shopRoot;
-        private static VisualElement _selector;
 
         internal static void Initialize(BaseUnityPlugin plugin, Harmony harmony, Type nativeButtonType,
             FieldInfo buttonUpgrade, MethodInfo getTogglerLevel)
@@ -57,28 +62,41 @@ namespace StonewardsTogglerPlus
             _toggleCheck = AccessTools.Field(nativeButtonType, "toggleCheck");
             _refreshToggle = AccessTools.Method(nativeButtonType, "RefreshToggle");
 
-            foreach (PlayerClass cls in Enum.GetValues(typeof(PlayerClass)))
+            foreach (UpgradeCategory category in new[] { UpgradeCategory.LEVELUP, UpgradeCategory.PICKUP })
             {
-                string name = cls.ToString();
-                if (Entries.ContainsKey(cls))
-                    continue;
+                PerClass[category] = new Dictionary<PlayerClass, Rules>();
+                Selected[category] = null;
+                string noun = category == UpgradeCategory.LEVELUP ? "ring" : "tome";
 
-                var entry = plugin.Config.Bind("Per-class ring exclusions", name, "",
-                    "Additional banned ring IDs for " + name +
-                    ". Global in-game Toggler bans still take precedence. Managed by the mod UI.");
-                Entries.Add(cls, entry);
-                Disabled.Add(cls, Deserialize(entry.Value));
+                foreach (PlayerClass cls in Enum.GetValues(typeof(PlayerClass)))
+                {
+                    // Preserve existing ring exclusion keys from v0.2.0.
+                    var deny = plugin.Config.Bind("Per-class " + noun + " exclusions",
+                        cls.ToString(), "", "IDs disabled specifically for this class.");
+                    var allow = plugin.Config.Bind("Per-class " + noun + " inclusions",
+                        cls.ToString(), "", "IDs explicitly enabled despite the global Toggler.");
+                    var rules = new Rules
+                    {
+                        DenyEntry = deny, AllowEntry = allow,
+                        Denied = Deserialize(deny.Value), Allowed = Deserialize(allow.Value)
+                    };
+                    rules.Denied.ExceptWith(rules.Allowed);
+                    PerClass[category][cls] = rules;
+                }
             }
 
             Patch(harmony, AccessTools.Method(nativeButtonType, "OnToggleClick", new[] { typeof(ClickEvent) }),
                 nameof(BeforeToggleClick), prefix: true);
             Patch(harmony, _refreshToggle, nameof(AfterRefreshToggle), prefix: false);
 
-            Type rogueManager = AccessTools.TypeByName("RogueLikeUpgradeManager");
-            Patch(harmony, AccessTools.Method(rogueManager, "CreateValidLevelupDraftPool"),
-                nameof(AfterCreateRingDraftPool), prefix: false);
+            var rogue = AccessTools.TypeByName("RogueLikeUpgradeManager");
+            PatchDraft(harmony, AccessTools.Method(rogue, "CreateValidLevelupDraftPool"), nameof(EnterRingDraft));
+            PatchDraft(harmony, AccessTools.Method(rogue, "CreateValidPickupDraftPool"), nameof(EnterTomeDraft));
+            Patch(harmony, AccessTools.Method(AccessTools.TypeByName("UpgradeManager"),
+                "IsUpgradeBlacklisted", new[] { typeof(RogueLikeUpgradeSO) }),
+                nameof(AfterBlacklistedCheck), prefix: false);
 
-            _log.LogInfo("Per-class ring rules initialized for " + Entries.Count + " classes.");
+            _log.LogInfo("Class ring/tome allow/deny overrides initialized.");
         }
 
         private static void Patch(Harmony harmony, MethodInfo target, string handler, bool prefix)
@@ -102,6 +120,51 @@ namespace StonewardsTogglerPlus
             }
         }
 
+        private static void PatchDraft(Harmony harmony, MethodInfo method, string prefixName)
+        {
+            if (method == null) { _log.LogWarning("Draft method missing: " + prefixName); return; }
+            try
+            {
+                harmony.Patch(method,
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(ClassRingRules), prefixName)),
+                    finalizer: new HarmonyMethod(AccessTools.Method(typeof(ClassRingRules), nameof(ExitDraft))));
+            }
+            catch (Exception ex) { _log.LogError("Draft patch failed: " + ex); }
+        }
+
+        private static void EnterRingDraft(out UpgradeCategory? __state)
+        {
+            __state = _draftScope;
+            _draftScope = UpgradeCategory.LEVELUP;
+        }
+
+        private static void EnterTomeDraft(out UpgradeCategory? __state)
+        {
+            __state = _draftScope;
+            _draftScope = UpgradeCategory.PICKUP;
+        }
+
+        private static Exception ExitDraft(Exception __exception, UpgradeCategory? __state)
+        {
+            _draftScope = __state;
+            return __exception;
+        }
+
+        // Override the actual blacklist decision while the game constructs the pool.
+        // Post-filtering a pool cannot re-enable a globally blacklisted item.
+        private static void AfterBlacklistedCheck(RogueLikeUpgradeSO upgradeSO, ref bool __result)
+        {
+            if (upgradeSO == null || !_draftScope.HasValue ||
+                upgradeSO.UpgradeCategory != _draftScope.Value ||
+                !TryGetLocalClass(out var cls) ||
+                !PerClass.TryGetValue(_draftScope.Value, out var byClass) ||
+                !byClass.TryGetValue(cls, out var rules))
+                return;
+
+            if (rules.Allowed.Contains(upgradeSO.ID)) __result = false;
+            else if (rules.Denied.Contains(upgradeSO.ID)) __result = true;
+        }
+
         private static HashSet<string> Deserialize(string serialized)
         {
             var result = new HashSet<string>(StringComparer.Ordinal);
@@ -123,66 +186,77 @@ namespace StonewardsTogglerPlus
             return result;
         }
 
-        private static void SetClassRule(PlayerClass cls, string id)
+        private static bool FindRules(UpgradeCategory cat, PlayerClass cls, out Rules rules)
         {
-            if (!Disabled.TryGetValue(cls, out var ids))
-                return;
+            rules = null;
+            return PerClass.TryGetValue(cat, out var byClass) && byClass.TryGetValue(cls, out rules);
+        }
 
-            if (!ids.Add(id))
-                ids.Remove(id);
+        private static bool EffectiveAllowed(UpgradeCategory cat, PlayerClass cls,
+            string id, bool globalBlacklisted)
+        {
+            if (FindRules(cat, cls, out var rules))
+            {
+                if (rules.Allowed.Contains(id)) return true;
+                if (rules.Denied.Contains(id)) return false;
+            }
+            return !globalBlacklisted;
+        }
 
-            // Store separately from the game's ShopData (and Steam Cloud saves).
-            Entries[cls].Value = string.Join(",",
-                ids.OrderBy(x => x, StringComparer.Ordinal).Select(Uri.EscapeDataString));
+        private static void SetClassRule(UpgradeCategory cat, PlayerClass cls, string id, bool allowed)
+        {
+            if (!FindRules(cat, cls, out var rules)) return;
+            if (allowed) { rules.Denied.Remove(id); rules.Allowed.Add(id); }
+            else { rules.Allowed.Remove(id); rules.Denied.Add(id); }
+            rules.AllowEntry.Value = Serialize(rules.Allowed);
+            rules.DenyEntry.Value = Serialize(rules.Denied);
             _plugin.Config.Save();
         }
 
-        private static bool IsRingButton(object button, out RogueLikeUpgradeSO ring)
+        private static string Serialize(HashSet<string> ids)
         {
-            ring = _buttonUpgrade?.GetValue(button) as RogueLikeUpgradeSO;
-            return ring != null && ring.UpgradeCategory == UpgradeCategory.LEVELUP;
+            return string.Join(",", ids.OrderBy(id => id, StringComparer.Ordinal)
+                .Select(Uri.EscapeDataString));
         }
 
-        // The native Toggler click normally changes the GLOBAL ShopData blacklist.
-        // In a class tab, intercept ring clicks and change only that class's config.
+        private static bool IsUpgradeButton(object button, out RogueLikeUpgradeSO upgrade)
+        {
+            upgrade = _buttonUpgrade?.GetValue(button) as RogueLikeUpgradeSO;
+            return upgrade != null && (upgrade.UpgradeCategory == UpgradeCategory.LEVELUP ||
+                upgrade.UpgradeCategory == UpgradeCategory.PICKUP);
+        }
+
         private static bool BeforeToggleClick(object __instance)
         {
-            if (!_selectedClass.HasValue ||
-                !IsRingButton(__instance, out var ring) ||
-                !HasPurchasedToggler())
-                return true; // Keep original behavior for global mode and tomes.
+            if (!IsUpgradeButton(__instance, out var upgrade) || !HasPurchasedToggler())
+                return true;
 
-            var id = ring.ID;
-            if (string.IsNullOrEmpty(id))
-                return false;
+            var category = upgrade.UpgradeCategory;
+            if (!Selected.TryGetValue(category, out var selected) || !selected.HasValue)
+                return true;
 
-            // A globally blacklisted ring cannot be re-enabled by a class tab.
-            if (IsGloballyBlacklisted(__instance, id))
-                return false;
-
-            SetClassRule(_selectedClass.Value, id);
+            var id = upgrade.ID;
+            if (string.IsNullOrEmpty(id)) return false;
+            bool current = EffectiveAllowed(category, selected.Value, id,
+                IsGloballyBlacklisted(__instance, id));
+            SetClassRule(category, selected.Value, id, !current);
             _refreshToggle?.Invoke(__instance, null);
             return false;
         }
 
-        // Native UI renders the global check; override it for the selected class.
         private static void AfterRefreshToggle(object __instance)
         {
-            if (!_selectedClass.HasValue ||
-                _toggleCheck == null ||
-                !IsRingButton(__instance, out var ring))
+            if (_toggleCheck == null || !IsUpgradeButton(__instance, out var upgrade))
                 return;
-
+            var category = upgrade.UpgradeCategory;
+            if (!Selected.TryGetValue(category, out var selected) || !selected.HasValue)
+                return;
             var check = _toggleCheck.GetValue(__instance) as VisualElement;
-            if (check == null)
-                return;
+            if (check == null) return;
 
-            bool bannedForClass = Disabled.TryGetValue(_selectedClass.Value, out var ids)
-                && ids.Contains(ring.ID);
-            bool bannedGlobally = IsGloballyBlacklisted(__instance, ring.ID);
-            // Same display convention as vanilla: check visible = item available.
-            check.style.display = bannedForClass || bannedGlobally
-                ? DisplayStyle.None : DisplayStyle.Flex;
+            bool allowed = EffectiveAllowed(category, selected.Value, upgrade.ID,
+                IsGloballyBlacklisted(__instance, upgrade.ID));
+            check.style.display = allowed ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private static bool IsGloballyBlacklisted(object button, string id)
@@ -190,7 +264,6 @@ namespace StonewardsTogglerPlus
             if (button == null || string.IsNullOrEmpty(id) ||
                 _buttonManager == null || _isGloballyBlacklisted == null)
                 return false;
-
             try
             {
                 var manager = _buttonManager.GetValue(button);
@@ -198,19 +271,6 @@ namespace StonewardsTogglerPlus
                     Convert.ToBoolean(_isGloballyBlacklisted.Invoke(manager, new object[] { id }));
             }
             catch { return false; }
-        }
-
-        // The level-up draft is generated for GameManager.Instance.LocalPlayer.
-        // Filtering here affects the local class only, not another player's rings.
-        private static void AfterCreateRingDraftPool(ref List<RogueLikeUpgradeSO> __result)
-        {
-            if (__result == null || __result.Count == 0 ||
-                !TryGetLocalClass(out var cls) || !Disabled.TryGetValue(cls, out var ids) ||
-                ids.Count == 0)
-                return;
-
-            __result.RemoveAll(ring => ring != null && ids.Contains(ring.ID));
-            // Vanilla GenerateThreeChoices already handles an empty draft pool.
         }
 
         private static bool TryGetLocalClass(out PlayerClass cls)

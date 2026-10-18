@@ -30,6 +30,8 @@ namespace StonewardsTogglerPlus
         private static FieldInfo _toggleCheck;
         private static MethodInfo _refreshToggle;
         private static MethodInfo _getTogglerLevel;
+        private static MethodInfo _isClassValid;
+        private static bool _warnedClassValidity;
 
         private sealed class Rules
         {
@@ -78,6 +80,9 @@ namespace StonewardsTogglerPlus
             _isGloballyBlacklisted = AccessTools.Method(AccessTools.TypeByName("UpgradeManager"),
                 "IsUpgradeBlacklisted", new[] { typeof(string) });
             _getTogglerLevel = getTogglerLevel;
+            // Use the same class eligibility check as CreateValidLevelupDraftPool.
+            _isClassValid = AccessTools.Method(typeof(RogueLikeUpgradeSO),
+                "IsClassValid", new[] { typeof(PlayerClass) });
             _toggleCheck = AccessTools.Field(nativeButtonType, "toggleCheck");
             _refreshToggle = AccessTools.Method(nativeButtonType, "RefreshToggle");
 
@@ -548,10 +553,59 @@ namespace StonewardsTogglerPlus
             }
         }
 
+        private static bool IsAvailableToClass(RogueLikeUpgradeSO upgrade, PlayerClass cls)
+        {
+            // If a game update removes the API, keep the full list visible
+            // instead of incorrectly hiding rings or deleting any settings.
+            if (_isClassValid == null)
+            {
+                if (!_warnedClassValidity)
+                {
+                    _log.LogWarning("RogueLikeUpgradeSO.IsClassValid missing; class ring visibility unchanged.");
+                    _warnedClassValidity = true;
+                }
+                return true;
+            }
+
+            try
+            {
+                return Convert.ToBoolean(_isClassValid.Invoke(upgrade, new object[] { cls }));
+            }
+            catch (Exception ex)
+            {
+                if (!_warnedClassValidity)
+                {
+                    _log.LogWarning("Could not check class ring eligibility: " + ex);
+                    _warnedClassValidity = true;
+                }
+                return true;
+            }
+        }
+
         private static void RefreshCategoryChecks(VisualElement root, UpgradeCategory category)
         {
             if (root == null || _nativeButtonType == null || _refreshToggle == null)
                 return;
+
+            // Hide incompatible rings ONLY in class-specific tabs. The existing
+            // ring grid contains item cards; the details preview lives elsewhere.
+            // Never delete cards or alter upgrade data, blacklist or save state.
+            if (category == UpgradeCategory.LEVELUP &&
+                Panels.TryGetValue(category, out var panel) &&
+                panel.Grid != null)
+            {
+                Selected.TryGetValue(category, out var selected);
+                foreach (var element in panel.Grid.Children())
+                {
+                    if (_nativeButtonType.IsInstanceOfType(element) &&
+                        IsUpgradeButton(element, out var ring) &&
+                        ring.UpgradeCategory == UpgradeCategory.LEVELUP)
+                    {
+                        bool visible = !selected.HasValue || IsAvailableToClass(ring, selected.Value);
+                        element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                    }
+                }
+            }
 
             foreach (var card in root.Query<VisualElement>().ToList())
             {

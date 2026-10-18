@@ -47,6 +47,25 @@ namespace StonewardsTogglerPlus
         [ThreadStatic] private static UpgradeCategory? _draftScope;
         private static VisualElement _shopRoot;
 
+        private sealed class PixelTab
+        {
+            internal Button Control;
+            internal readonly List<VisualElement> Frame = new List<VisualElement>();
+            internal readonly List<VisualElement> Surface = new List<VisualElement>();
+            internal Label Caption;
+        }
+
+        private sealed class SelectorPanel
+        {
+            internal VisualElement Root;
+            internal VisualElement Grid;
+            internal readonly Dictionary<string, PixelTab> Tabs =
+                new Dictionary<string, PixelTab>(StringComparer.Ordinal);
+        }
+
+        private static readonly Dictionary<UpgradeCategory, SelectorPanel> Panels =
+            new Dictionary<UpgradeCategory, SelectorPanel>();
+
         internal static void Initialize(BaseUnityPlugin plugin, Harmony harmony, Type nativeButtonType,
             FieldInfo buttonUpgrade, MethodInfo getTogglerLevel)
         {
@@ -312,163 +331,224 @@ namespace StonewardsTogglerPlus
             catch { return false; }
         }
 
+        // Two independent selectors: one belongs to the Rings tab, one to Tomes.
         internal static void AttachSelector(object menu, VisualElement root)
         {
             if (root == null || !HasPurchasedToggler())
                 return;
 
-            // Discover the existing ring tab from real ring cards. The upgrade
-            // category is LEVELUP; IUnlockable.Category is a DIFFERENT enum.
-            VisualElement ringGrid = null;
-            foreach (var card in root.Query<VisualElement>().ToList())
-            {
-                if (_nativeButtonType == null || !_nativeButtonType.IsInstanceOfType(card)
-                    || card.parent == null || !IsRingButton(card, out _))
-                    continue;
-
-                if (_buttonCanClick != null &&
-                    _buttonCanClick.GetValue(card) is bool canClick && !canClick)
-                    continue; // Ignore the preview card below the shop grid.
-
-                ringGrid = card.parent;
-                break;
-            }
-
-            if (ringGrid == null || ringGrid.parent == null)
-                return;
-
             if (_shopRoot != root)
             {
                 _shopRoot = root;
-                _selector = null;
-                SelectorButtons.Clear();
+                Panels.Clear();
+                Selected[UpgradeCategory.LEVELUP] = null;
+                Selected[UpgradeCategory.PICKUP] = null;
             }
 
-            if (_selector != null && _selector.parent != null)
+            foreach (var category in new[] { UpgradeCategory.LEVELUP, UpgradeCategory.PICKUP })
             {
-                RefreshAllRingChecks(root);
-                return;
-            }
+                VisualElement grid = FindCategoryGrid(root, category);
+                if (grid == null || grid.parent == null)
+                    continue;
 
-            var container = ringGrid.parent;
-            var existing = root.Q<VisualElement>(SelectorName);
-            if (existing != null)
-                existing.RemoveFromHierarchy();
-
-            _selector = new VisualElement { name = SelectorName };
-            _selector.style.flexDirection = FlexDirection.Column;
-            _selector.style.marginTop = 8;
-            _selector.style.marginBottom = 12;
-            _selector.style.paddingTop = 7;
-            _selector.style.paddingBottom = 10;
-            _selector.style.paddingLeft = 6;
-            _selector.style.paddingRight = 6;
-            // Match the native shop: no separate opaque "debug panel".
-            _selector.style.backgroundColor = Color.clear;
-            _selector.style.borderBottomWidth = 1;
-            _selector.style.borderBottomColor = new Color(0.53f, 0.48f, 0.34f, 0.9f);
-
-            var title = new Label("RING TOGGLER - CLASS");
-            title.style.color = new Color(0.97f, 0.82f, 0.52f, 1f);
-            title.style.fontSize = 19;
-            title.style.unityFontStyleAndWeight = FontStyle.Bold;
-            title.style.marginBottom = 8;
-            _selector.Add(title);
-
-            var buttons = new VisualElement();
-            buttons.style.flexDirection = FlexDirection.Row;
-            buttons.style.flexWrap = Wrap.Wrap;
-            buttons.style.alignItems = Align.Center;
-            buttons.style.marginBottom = 2;
-            _selector.Add(buttons);
-
-            AddModeButton(buttons, "All classes", null);
-
-            // Limit the list to actual playable archetypes, not sentinel enum values.
-            var archetypeField = AccessTools.Field(menu.GetType(), "archetypeDatabaseSo");
-            var archetypes = archetypeField?.GetValue(menu) as PlayerArchetypeDatabaseSO;
-            foreach (PlayerClass cls in Enum.GetValues(typeof(PlayerClass)))
-            {
-                if (archetypes != null)
+                if (Panels.TryGetValue(category, out var oldPanel) &&
+                    oldPanel.Root.parent == grid.parent &&
+                    oldPanel.Grid == grid)
                 {
-                    try
-                    {
-                        if (archetypes.GetPlayerArchetype(cls) == null)
-                            continue;
-                    }
-                    catch { continue; }
+                    RefreshCategoryChecks(root, category);
+                    continue;
                 }
-                AddModeButton(buttons, cls.ToString(), cls);
+
+                if (oldPanel != null && oldPanel.Root.parent != null)
+                    oldPanel.Root.RemoveFromHierarchy();
+
+                var stale = root.Q<VisualElement>(SelectorName + "-" + category);
+                if (stale != null) stale.RemoveFromHierarchy();
+
+                var panel = new SelectorPanel { Grid = grid };
+                var frame = new VisualElement { name = SelectorName + "-" + category };
+                panel.Root = frame;
+                frame.style.flexDirection = FlexDirection.Column;
+                frame.style.marginTop = 9;
+                frame.style.marginBottom = 13;
+                frame.style.paddingTop = 8;
+                frame.style.paddingBottom = 11;
+                frame.style.paddingLeft = 3;
+                frame.style.paddingRight = 3;
+                frame.style.backgroundColor = Color.clear;
+                frame.style.borderBottomWidth = 2;
+                frame.style.borderBottomColor = new Color(0.55f, 0.48f, 0.34f, 1f);
+
+                var title = new Label(category == UpgradeCategory.LEVELUP
+                    ? "RINGS - CLASS FILTER" : "TOMES - CLASS FILTER");
+                title.style.color = new Color(0.99f, 0.84f, 0.55f, 1f);
+                title.style.fontSize = 23;
+                title.style.unityFontStyleAndWeight = FontStyle.Bold;
+                title.style.marginBottom = 10;
+                frame.Add(title);
+
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.flexWrap = Wrap.Wrap;
+                row.style.alignItems = Align.Center;
+                row.style.marginBottom = 4;
+                frame.Add(row);
+
+                AddModeButton(panel, row, category, "All classes", null);
+
+                var archetypeField = AccessTools.Field(menu.GetType(), "archetypeDatabaseSo");
+                var archetypes = archetypeField?.GetValue(menu) as PlayerArchetypeDatabaseSO;
+                foreach (PlayerClass cls in Enum.GetValues(typeof(PlayerClass)))
+                {
+                    if (archetypes != null)
+                    {
+                        try
+                        {
+                            if (archetypes.GetPlayerArchetype(cls) == null)
+                                continue;
+                        }
+                        catch { continue; }
+                    }
+                    AddModeButton(panel, row, category, cls.ToString(), cls);
+                }
+
+                var hint = new Label("All classes: default  |  Class: override");
+                hint.style.fontSize = 15;
+                hint.style.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+                hint.style.marginTop = 6;
+                frame.Add(hint);
+
+                var container = grid.parent;
+                container.Insert(container.IndexOf(grid), frame);
+                Panels[category] = panel;
+                RefreshModeButtons(category);
+                RefreshCategoryChecks(root, category);
             }
-
-            var hint = new Label("All classes: global bans  |  Class: additional bans");
-            hint.style.fontSize = 13;
-            hint.style.color = new Color(0.79f, 0.81f, 0.82f, 1f);
-            hint.style.marginTop = 5;
-            _selector.Add(hint);
-
-            container.Insert(container.IndexOf(ringGrid), _selector);
-            RefreshModeButtons();
-            RefreshAllRingChecks(root);
         }
 
-        private static void AddModeButton(VisualElement container, string label, PlayerClass? cls)
+        private static VisualElement FindCategoryGrid(VisualElement root, UpgradeCategory category)
         {
+            foreach (var card in root.Query<VisualElement>().ToList())
+            {
+                if (_nativeButtonType == null || !_nativeButtonType.IsInstanceOfType(card) ||
+                    card.parent == null || !IsUpgradeButton(card, out var upgrade) ||
+                    upgrade.UpgradeCategory != category)
+                    continue;
+
+                if (_buttonCanClick != null &&
+                    _buttonCanClick.GetValue(card) is bool clickable && !clickable)
+                    continue; // Details preview, not the main item grid.
+
+                return card.parent;
+            }
+            return null;
+        }
+
+        private static void AddModeButton(SelectorPanel panel, VisualElement row,
+            UpgradeCategory category, string text, PlayerClass? cls)
+        {
+            // Draw a REAL stepped pixel border. UI Toolkit borderRadius produces
+            // smooth curves, so construct five horizontal strips at stepped insets
+            // (plus five inner strips) instead of square or anti-aliased corners.
             var button = new Button(() =>
             {
-                _selectedClass = cls;
-                RefreshModeButtons();
-                RefreshAllRingChecks(_shopRoot);
-            }) { text = label };
+                Selected[category] = cls;
+                RefreshModeButtons(category);
+                RefreshCategoryChecks(_shopRoot, category);
+            });
+            button.text = string.Empty;
+            button.RemoveFromClassList("unity-button");
+            button.style.position = Position.Relative;
+            button.style.height = 46;
+            button.style.width = text == "All classes"
+                ? 146 : Math.Max(90, text.Length * 12 + 29);
+            button.style.marginRight = 6;
+            button.style.marginBottom = 6;
+            button.style.paddingLeft = 0;
+            button.style.paddingRight = 0;
+            button.style.paddingTop = 0;
+            button.style.paddingBottom = 0;
+            button.style.backgroundColor = Color.clear;
+            button.style.borderTopWidth = 0;
+            button.style.borderBottomWidth = 0;
+            button.style.borderLeftWidth = 0;
+            button.style.borderRightWidth = 0;
 
-            // In-game tab proportions and legibility at 1080p and 1440p.
-            button.style.fontSize = 16;
-            button.style.unityFontStyleAndWeight = FontStyle.Bold;
-            button.style.unityTextAlign = TextAnchor.MiddleCenter;
-            button.style.height = 38;
-            button.style.minWidth = 70;
-            button.style.marginRight = 5;
-            button.style.marginBottom = 5;
-            button.style.paddingLeft = 11;
-            button.style.paddingRight = 11;
-            button.style.paddingTop = 3;
-            button.style.paddingBottom = 3;
-            button.style.borderBottomWidth = 2;
-            button.style.borderTopWidth = 1;
-            button.style.borderLeftWidth = 1;
-            button.style.borderRightWidth = 1;
-            container.Add(button);
-            SelectorButtons[label] = button;
+            var tab = new PixelTab { Control = button };
+            // Border silhouette: top 12px inset, shoulder 6px inset, flat sides.
+            tab.Frame.Add(Slice(button, 12, 12, 0, -1, 4));
+            tab.Frame.Add(Slice(button, 6, 6, 4, -1, 5));
+            tab.Frame.Add(Slice(button, 0, 0, 9, 9, -1));
+            tab.Frame.Add(Slice(button, 6, 6, -1, 4, 5));
+            tab.Frame.Add(Slice(button, 12, 12, -1, 0, 4));
+            // The inset silhouette leaves a crisp 2px border throughout.
+            tab.Surface.Add(Slice(button, 13, 13, 2, -1, 4));
+            tab.Surface.Add(Slice(button, 8, 8, 6, -1, 5));
+            tab.Surface.Add(Slice(button, 2, 2, 11, 11, -1));
+            tab.Surface.Add(Slice(button, 8, 8, -1, 6, 5));
+            tab.Surface.Add(Slice(button, 13, 13, -1, 2, 4));
+
+            var caption = new Label(text);
+            caption.pickingMode = PickingMode.Ignore;
+            caption.style.position = Position.Absolute;
+            caption.style.left = 0;
+            caption.style.right = 0;
+            caption.style.top = 0;
+            caption.style.bottom = 0;
+            caption.style.fontSize = 19;
+            caption.style.unityFontStyleAndWeight = FontStyle.Bold;
+            caption.style.unityTextAlign = TextAnchor.MiddleCenter;
+            button.Add(caption);
+            tab.Caption = caption;
+
+            row.Add(button);
+            panel.Tabs[text] = tab;
         }
 
-        private static void RefreshModeButtons()
+        // -1 means the edge is unconstrained. A fixed height is used only for
+        // horizontal edge strips; middle strips stretch with the button.
+        private static VisualElement Slice(VisualElement parent, float left, float right,
+            float top, float bottom, float height)
         {
-            foreach (var pair in SelectorButtons)
+            var slice = new VisualElement { pickingMode = PickingMode.Ignore };
+            slice.style.position = Position.Absolute;
+            slice.style.left = left;
+            slice.style.right = right;
+            if (top >= 0) slice.style.top = top;
+            if (bottom >= 0) slice.style.bottom = bottom;
+            if (height >= 0) slice.style.height = height;
+            parent.Add(slice);
+            return slice;
+        }
+
+        private static void RefreshModeButtons(UpgradeCategory category)
+        {
+            if (!Panels.TryGetValue(category, out var panel))
+                return;
+
+            Selected.TryGetValue(category, out var selected);
+            foreach (var item in panel.Tabs)
             {
-                bool active = _selectedClass.HasValue
-                    ? pair.Key == _selectedClass.Value.ToString()
-                    : pair.Key == "All classes";
+                bool active = selected.HasValue
+                    ? item.Key == selected.Value.ToString()
+                    : item.Key == "All classes";
 
-                // Native Stonewards shop palette: slate-gray tabs with a dark,
-                // warm-highlighted selected state, rather than generic UI buttons.
-                pair.Value.style.backgroundColor = active
-                    ? new Color(0.09f, 0.11f, 0.15f, 1f)
-                    : new Color(0.23f, 0.26f, 0.31f, 1f);
-                pair.Value.style.color = active
-                    ? new Color(1f, 0.90f, 0.69f, 1f)
-                    : new Color(0.96f, 0.96f, 0.94f, 1f);
-
-                var border = active
-                    ? new Color(0.90f, 0.72f, 0.42f, 1f)
-                    : new Color(0.48f, 0.48f, 0.44f, 1f);
-                pair.Value.style.borderTopColor = border;
-                pair.Value.style.borderBottomColor = border;
-                pair.Value.style.borderLeftColor = border;
-                pair.Value.style.borderRightColor = border;
+                var tab = item.Value;
+                Color border = active
+                    ? new Color(0.95f, 0.73f, 0.36f, 1f)
+                    : new Color(0.54f, 0.47f, 0.34f, 1f);
+                Color fill = active
+                    ? new Color(0.13f, 0.17f, 0.22f, 1f)
+                    : new Color(0.28f, 0.32f, 0.37f, 1f);
+                foreach (var part in tab.Frame) part.style.backgroundColor = border;
+                foreach (var part in tab.Surface) part.style.backgroundColor = fill;
+                tab.Caption.style.color = active
+                    ? new Color(1f, 0.87f, 0.59f, 1f)
+                    : new Color(0.96f, 0.96f, 0.93f, 1f);
             }
         }
 
-        private static void RefreshAllRingChecks(VisualElement root)
+        private static void RefreshCategoryChecks(VisualElement root, UpgradeCategory category)
         {
             if (root == null || _nativeButtonType == null || _refreshToggle == null)
                 return;
@@ -476,10 +556,11 @@ namespace StonewardsTogglerPlus
             foreach (var card in root.Query<VisualElement>().ToList())
             {
                 if (_nativeButtonType.IsInstanceOfType(card) &&
-                    IsRingButton(card, out _))
+                    IsUpgradeButton(card, out var upgrade) &&
+                    upgrade.UpgradeCategory == category)
                 {
                     try { _refreshToggle.Invoke(card, null); }
-                    catch { /* An uninitialized card can be left to the native UI. */ }
+                    catch { /* Preview cards may not be initialized yet. */ }
                 }
             }
         }

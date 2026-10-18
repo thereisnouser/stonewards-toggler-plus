@@ -1,77 +1,82 @@
 # Stonewards TogglerPlus
 
-**Choose which rings and tomes can appear in your Stonewards runs — globally or per character class.** TogglerPlus extends the game's built-in Toggler to cover regular starting upgrades while keeping the original shop interface and persistence system.
+**Choose which rings and tomes can appear in your Stonewards runs, globally or for individual character classes.** TogglerPlus expands the game's built-in Toggler while keeping its original upgrade cards and controls.
 
 ## ✨ Features
 
-- **Default rings and tomes** — add eligible default (non-unlockable, non-hidden) upgrades to their corresponding shop categories.
-- **Original Toggler controls** — use the game's own upgrade cards and checkboxes instead of a separate mod menu.
-- **Vanilla progression** — checkboxes become available only after you purchase the in-game Toggler upgrade.
-- **Saved availability choices** — toggled upgrades use Stonewards' existing persistent blacklist and are filtered from newly generated reward selections.
-- **Native UI integration** — existing unlockable upgrades remain available; the mod avoids duplicate cards and does not expose hidden upgrades.
-
-## 💍 Per-class ring and tome overrides (0.2.0 test build)
-
-Both **Rings** and **Tomes** shop tabs have the same class selector. Its buttons use pixel-stepped borders and larger text, matching the native shop style.
-
-- **All classes** edits Stonewards' ordinary, globally saved Toggler blacklist.
-- **A named class** edits a local **override** for that class: an item can be explicitly enabled or disabled without changing the global blacklist.
-- **Globally disabled, enabled for one class:** disable an item in All classes, then select Miner (for example) and enable it. It is permitted for Miner while remaining disabled for the other classes.
-- **Globally enabled, disabled for one class:** leave it on in All classes, select Miner and switch it off.
-- **Without a class override**, an item follows the All classes setting. Toggling a class checkbox stores an explicit decision for that class. Later changing All classes does not erase these exceptions.
-
-Existing per-class ring bans are retained. Rings and tomes now each have independent per-class **inclusion** and **exclusion** config entries in `BepInEx/config/com.thereisnouser.stonewards.togglerplus.cfg`. These profile settings are local, not automatically synced through Steam Cloud or across multiplayer clients.
-
-**Important:** Class overrides apply to **future local-player reward draft generation**, not already acquired upgrades. The native game still enforces its own class-validity, stacking, max-level and other restrictions. These overrides do not force an otherwise invalid upgrade to spawn.
-
-**Testing:** This is an unverified v0.2.0 development change; build and test in-game before publishing. The earlier 0.1.1 source is preserved at [backup/pre-class-filters-0.1.1](https://github.com/thereisnouser/stonewards-toggler-plus/tree/backup/pre-class-filters-0.1.1).
+- **Default rings and tomes** — include eligible default upgrades in the game's existing Toggler, not just unlockable ones.
+- **Global controls** — use **All classes** to enable or disable an upgrade for everyone through the original saved Toggler blacklist.
+- **Per-class overrides** — explicitly allow or block rings and tomes for a selected character class, independently of the global setting.
+- **Independent categories** — Rings and Tomes have their own class selectors and override rules.
+- **Persistent choices** — global settings use Stonewards' existing save data; per-class settings are saved in your BepInEx profile.
+- **Native-style interface** — pixel-stepped class buttons and the game's own upgrade cards, with no extra hotkeys or standalone menus.
 
 ## 🎮 How to use
 
-1. Unlock the **Toggler** through normal Stonewards progression. The mod does **not** unlock it for free.
-2. Open the game's original upgrade/unlock shop.
-3. Find eligible default **rings** and **tomes** alongside the normal entries in their respective categories.
-4. Use the original Toggler checkboxes to disable upgrades you do not want to receive.
-5. Start a new run or generate a new upgrade choice to see the updated availability. Re-enable an upgrade to make it eligible again under the game's normal rules.
+1. Purchase the in-game **Toggler** upgrade through normal progression. TogglerPlus does not unlock it for free.
+2. Open Stonewards' upgrade/unlock shop and select **Rings** or **Tomes**.
+3. Choose **All classes** to change the default availability of an item using its existing checkbox.
+4. Select a specific class to set an exception for that class. Each checkbox click saves an explicit **allowed** or **blocked** decision.
+5. Switch between classes or categories as needed. Unmodified class entries inherit the global setting.
+6. Start a new run or generate new reward choices to apply the updated availability rules.
 
-The mod uses the original shop interface. In v0.2.0, rings and tomes each have a class selector; no new hotkey is needed.
+**Example:** Disable a ring under **All classes**, then select **Miner** and enable the same ring. That ring is allowed for Miner while remaining disabled for classes without an explicit override. The reverse also works: leave a ring enabled globally, then disable it for Miner.
 
-**Before uninstalling:** re-enable any default rings or tomes you want to be able to receive again. Removing the plugin does not clear the blacklist saved by the game.
+Class overrides are applied to **future local-player reward-pool generation**. They do not grant an upgrade, bypass normal class eligibility rules, or remove something already obtained.
+
+## ⚙️ Configuration
+
+Most settings are controlled directly through the in-game Toggler.
+
+- **All classes:** Stonewards' native global upgrade blacklist, saved by the game.
+- **Individual classes:** independent ring and tome allow/deny overrides, saved in the local BepInEx configuration.
+
+Per-class settings are stored in your active mod-manager profile:
+
+`BepInEx/config/com.thereisnouser.stonewards.togglerplus.cfg`
+
+| Configuration section | Purpose |
+| --- | --- |
+| `Per-class ring inclusions` | Rings explicitly allowed for a class, even when globally blocked |
+| `Per-class ring exclusions` | Rings explicitly blocked for a class |
+| `Per-class tome inclusions` | Tomes explicitly allowed for a class, even when globally blocked |
+| `Per-class tome exclusions` | Tomes explicitly blocked for a class |
+
+The mod saves these class rules as upgrade IDs. The buttons in the game are the intended way to edit them; manual configuration editing is not required. Per-class settings belong to the selected BepInEx profile, not to Stonewards' normal global Toggler blacklist.
 
 ## 📦 Installation
 
-Install **TogglerPlus** from the Stonewards Thunderstore community using **r2modman** or another compatible mod manager once the package is published. Launch the game using your modded profile. The package declares **BepInExPack 5** as a dependency.
+Install **TogglerPlus** in the Stonewards community using **r2modman** or another compatible Thunderstore mod manager, then launch the game through that profile. The package declares **BepInExPack 5** as a dependency.
 
-The local r2modman development profile in this repository is named `stonewards-toggler-plus`.
-
-For a source build, follow the commands in the [Development](#-development) section below.
+For local builds, use a profile named `stonewards-toggler-plus` to match this repository. See **Development** for the existing build and packaging commands.
 
 ## 🔧 Compatibility
 
-- **Game:** Stonewards, using the upgrade shop and Toggler APIs examined during development. Compatibility after game changes has not been confirmed.
-- **Mod loader:** BepInEx 5 (Thunderstore dependency: `BepInEx-BepInExPack-5.4.2305`).
-- **Multiplayer:** Global toggles use the game's existing availability data. Per-class rules override blacklist decisions only while generating the local player's ring/tome reward pools; multiplayer behavior still needs testing.
+- **Game:** Stonewards; developed against the game's existing Toggler and upgrade-draft interfaces. The new 0.2.0 class-filtering behavior requires in-game verification.
+- **Mod loader:** BepInEx 5 with Harmony (Thunderstore dependency: `BepInEx-BepInExPack-5.4.2305`).
+- **Multiplayer:** Class overrides target the local player's reward draft. Synchronization and host/client behavior have not been independently verified.
 
 ## ⚠️ Known limitations
 
-- A category must have an existing native ring/tome upgrade card for the mod to identify the correct grid. If none is available, the mod skips that category instead of inserting cards into an uncertain location.
-- Disabling or explicitly enabling an upgrade affects **future reward selections**, not upgrades already offered or obtained in an ongoing run.
-- Class overrides do not bypass the game's other eligibility checks or guarantee an item will appear.
-- **Saved blacklist entries persist after uninstall.** Re-enable your defaults in the Toggler before removing the mod.
-- Changes to the game's upgrade shop or Toggler APIs may require an update.
+- **New in 0.2.0:** Class-based exceptions are implemented in source but require gameplay testing before a public release.
+- The plugin needs an existing native card in each category to identify the correct Rings/Tomes grid. If the grid cannot be identified, it leaves that section unchanged.
+- Explicitly allowing an upgrade overrides only the relevant blacklist decision. Other game restrictions still apply, so it does not guarantee that an upgrade will be offered.
+- New rules affect future reward generation, not rewards already offered or collected.
+- **Before uninstalling**, re-enable any globally disabled default rings or tomes you want available again. Removing the mod does not clear the game's saved blacklist.
+- Per-class settings are stored locally in your BepInEx profile. They are not automatically synchronized across other profiles, computers, or multiplayer clients.
 
 ## 🛠️ Development
 
-TogglerPlus is a BepInEx 5 / Harmony plugin targeting `netstandard2.1`. It integrates with `UnlockableMenu`, reuses the game's `UnlockUpgradeButton` and UXML template, and enables the original checkboxes when the purchased Toggler level permits it. The game's own `UpgradeManager.ToggleUpgradeAvailability` and `ShopData` blacklist handle global saved choices. Per-class ring/tome inclusions and exclusions are stored separately in the BepInEx plugin config.
+TogglerPlus is a BepInEx 5/Harmony plugin targeting `netstandard2.1`. It extends `UnlockableMenu` using the native `UnlockUpgradeButton` component and existing UXML templates. The global Toggler continues to write the game's `ShopData` blacklist. For per-class decisions, the plugin changes the blacklist result only while building the relevant local player's ring or tome reward draft.
 
-The 0.2.0 test build compiles `src/TogglerPlusPlugin.cs` and `src/ClassRingRules.cs`. The optional diagnostics plugin and IL inspector are development utilities, **not** extra released TogglerPlus features.
+The release build includes `src/TogglerPlusPlugin.cs` and `src/ClassRingRules.cs`. Optional diagnostics and IL inspection utilities are separate developer tools.
 
 ### Building
 
-You need Stonewards, .NET SDK, Windows PowerShell, and a BepInEx 5 profile. Close the game before installing the plugin.
+You need a local Stonewards installation, the .NET SDK, PowerShell, and a BepInEx 5 mod-manager profile. Close the game before installing a rebuilt DLL.
 
 ```powershell
-$gameDir = "C:\path\to\Stonewards"
+$gameDir = Read-Host "Stonewards installation folder"
 $profileDir = Join-Path $env:APPDATA "r2modmanPlus-local\Stonewards\profiles\stonewards-toggler-plus"
 
 powershell -ExecutionPolicy Bypass -File .\build-and-install.ps1 `
@@ -79,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\build-and-install.ps1 `
   -ProfileDir $profileDir
 ```
 
-To compile and create a **stable Thunderstore archive**, switch back to the appropriate stable source branch first. The main branch is currently a test build; do not package it as version 0.1.1 until its manifest/changelog match:
+To compile and create the Thunderstore upload ZIP from the same release sources:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\package-thunderstore.ps1 `
@@ -87,11 +92,11 @@ powershell -ExecutionPolicy Bypass -File .\package-thunderstore.ps1 `
   -ProfileDir $profileDir
 ```
 
-The resulting package is written to `dist/TogglerPlus-<version>.zip` and includes the compiled plugin, manifest, dedicated Thunderstore README, changelog, and icon. The script does **not** publish to Thunderstore.
+The packager checks version consistency, compiled DLL metadata, the 256×256 icon, and required archive entries. Output: `dist/TogglerPlus-0.2.0.zip`. It does **not** publish the mod.
 
 ## 🔗 Links
 
-[Thunderstore description](thunderstore/README.md) · [Changelog](thunderstore/CHANGELOG.md) · [Report an issue](https://github.com/thereisnouser/stonewards-toggler-plus/issues)
+[Report an issue](https://github.com/thereisnouser/stonewards-toggler-plus/issues) · [Changelog](thunderstore/CHANGELOG.md) · [Thunderstore description](thunderstore/README.md)
 
 ---
 

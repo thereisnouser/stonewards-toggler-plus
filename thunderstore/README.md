@@ -1,39 +1,50 @@
 # Stonewards TogglerPlus
 
-**Control which default rings and tomes can appear in your runs using Stonewards' original Toggler.** No extra menus or separate hotkeys.
+**Control which rings and tomes can appear in your runs — for all classes or for individual character classes — using Stonewards' built-in Toggler.**
 
 ## ✨ Features
 
-- **More Toggler options** — disable eligible default rings and tomes, not only unlockable upgrades.
-- **Native shop interface** — added items use the game's own upgrade cards and checkboxes.
-- **Normal progression** — checkbox controls are available after purchasing the in-game Toggler.
-- **Persistent choices** — disabled upgrades use Stonewards' saved blacklist and are excluded from newly generated reward selections.
-- **No extra UI** — regular unlockable upgrades and the game's existing Toggler behavior remain in place.
+- **Default upgrades** — toggle eligible default rings and tomes alongside the game's ordinary unlockable upgrades.
+- **All classes** — globally enable or disable an upgrade with the original Toggler checkbox.
+- **Per-class exceptions** — allow or block an upgrade for a chosen class, even when the global setting says otherwise.
+- **Separate Rings and Tomes controls** — each shop category has its own class selector and saved overrides.
+- **Native-style interface** — uses the existing upgrade cards and pixel-stepped buttons, without separate menus or hotkeys.
+- **Saved choices** — global rules use the game's existing blacklist; class-specific rules use your local BepInEx configuration.
 
 ## 🎮 How to use
 
-1. Purchase the in-game **Toggler** through normal progression.
-2. Open the original upgrade/unlock shop.
-3. Locate eligible default rings and tomes in their usual categories.
-4. Toggle off any upgrades you do not want in future rewards. Toggle them back on whenever needed.
+1. Purchase Stonewards' in-game **Toggler** upgrade through normal progression.
+2. Open the original upgrade/unlock shop and switch to **Rings** or **Tomes**.
+3. Choose **All classes** to edit the global defaults.
+4. Choose a class to explicitly enable or disable a particular upgrade for that class.
 
-Disabling an upgrade affects **newly generated choices**; it does not remove an upgrade already obtained in a run.
+**Example:** Disable a ring in **All classes**, then select **Miner** and enable it. Miner can receive that ring while other classes without overrides still follow the global ban.
 
-**Before uninstalling:** re-enable any default rings and tomes you want available again. Removing TogglerPlus does **not** erase the blacklist stored in the game's save data.
+Class-specific rules affect **future local-player reward choices**. They cannot force invalid rewards to appear or remove upgrades already acquired.
+
+## ⚙️ Configuration
+
+Use the in-game checkboxes for everyday changes. Class-specific inclusions and exclusions are saved separately for Rings and Tomes in your active mod-manager profile:
+
+`BepInEx/config/com.thereisnouser.stonewards.togglerplus.cfg`
+
+The **All classes** setting continues to use the game's saved Toggler blacklist. No additional hotkeys are required.
 
 ## 📦 Installation
 
-Install **TogglerPlus** using **r2modman** or another compatible Thunderstore mod manager when the package is available, then start Stonewards through the modded profile. The required **BepInExPack** dependency is declared by the package.
+Install **TogglerPlus** with **r2modman** or another compatible Thunderstore mod manager, then launch Stonewards through your modded profile. BepInExPack 5 is declared as a dependency.
 
 ## 🔧 Compatibility
 
-- **Game:** Stonewards, using the game's existing upgrade shop and Toggler APIs.
+- **Game:** Stonewards; uses the game's built-in Toggler and upgrade shop.
 - **Mod loader:** BepInEx 5.
-- **Multiplayer:** Local shop integration; multiplayer behavior has not been separately verified.
+- **Multiplayer:** Class-specific filtering targets the local player's reward drafts; multiplayer synchronization has not been verified.
 
 ## ⚠️ Known limitations
 
-The mod needs an existing native upgrade card to locate each ring/tome category. If a category has no suitable card, that category is left unchanged. Game updates may require compatibility changes. Saved blacklist selections are not reset when the plugin is removed.
+Class overrides are new in 0.2.0 and require in-game validation. Per-class rules are local to your BepInEx profile. An explicit class allowance does not bypass other game restrictions or guarantee a particular reward.
+
+**Before uninstalling:** Re-enable globally blocked default upgrades if you want them available in the unmodded game. Uninstalling the plugin does not clear the game's saved blacklist.
 
 ## 🔗 Links
 

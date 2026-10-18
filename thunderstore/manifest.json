@@ -1,8 +1,8 @@
 {
   "name": "TogglerPlus",
-  "version_number": "0.1.1",
+  "version_number": "0.2.0",
   "website_url": "https://github.com/thereisnouser/stonewards-toggler-plus",
-  "description": "Extend Stonewards' built-in Toggler to disable default rings and tomes using the original shop interface and saved upgrade blacklist.",
+  "description": "Extend Stonewards' Toggler with global and per-class ring and tome controls, including class-specific exceptions to globally disabled upgrades.",
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2305"
   ]

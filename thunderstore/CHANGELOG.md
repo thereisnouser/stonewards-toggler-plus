@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Add separate class selectors to the Rings and Tomes Toggler categories.
+- Let individual classes explicitly enable or disable upgrades, including exceptions to global Toggler bans.
+- Keep All classes editing the game's original saved blacklist; store independent per-class ring/tome allow/deny settings in BepInEx.
+- Add game-style stepped class buttons with improved label readability.
+- Update GitHub and Thunderstore descriptions and prepare the 0.2.0 package.
+- Class-based behavior requires in-game verification before publication.
+
 ## 0.1.1
 
 - Updated GitHub and Thunderstore descriptions to the shared thereisnouser standard.

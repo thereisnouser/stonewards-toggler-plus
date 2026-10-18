@@ -29,7 +29,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $core 'BepInEx.dll'))) { throw "BepI
 if (-not (Test-Path -LiteralPath (Join-Path $GameDir 'Stonewards_Data\Managed\Assembly-CSharp.dll'))) { throw "Game DLL not found: $GameDir" }
 
 if (-not $SkipBuild) {
-    Write-Host 'Building stable TogglerPlus sources...' -ForegroundColor Cyan
+    Write-Host 'Building TogglerPlus release sources...' -ForegroundColor Cyan
     & dotnet build $project -c Release "-p:GameDir=$GameDir" "-p:BepInExCoreDir=$core" --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Build failed. A release ZIP was not created.' }
 }
@@ -54,11 +54,24 @@ if ($releaseChangelog -notmatch ('(?m)^##\s+' + [regex]::Escape($manifest.versio
     throw 'Thunderstore changelog does not contain an entry for this release version.'
 }
 
-# Reject an accidentally stale experimental class-specific build.
+# Confirm that this DLL includes the new class-specific rules and the 0.2.0 version.
+# This also protects -SkipBuild from accidentally packaging a 0.1.x DLL.
 $assemblyBytes = [System.IO.File]::ReadAllBytes($dll)
 $utf8Text = [System.Text.Encoding]::UTF8.GetString($assemblyBytes)
-if ($utf8Text.Contains('ClassRingRules')) {
-    throw 'This DLL contains experimental class-specific rules. Delete bin/obj and rebuild from the stable sources.'
+if (-not $utf8Text.Contains('ClassRingRules') -or
+    -not $utf8Text.Contains([string]$manifest.version_number)) {
+    throw 'Compiled DLL does not match the TogglerPlus 0.2.0 sources. Delete bin/obj and rebuild.'
+}
+$sourceFiles = @(
+    (Join-Path $repoDir 'src\TogglerPlusPlugin.cs'),
+    (Join-Path $repoDir 'src\ClassRingRules.cs'),
+    $project
+)
+foreach ($file in $sourceFiles) {
+    if ((Get-Item -LiteralPath $dll).LastWriteTimeUtc -lt
+        (Get-Item -LiteralPath $file).LastWriteTimeUtc) {
+        throw "Compiled DLL is older than source file $file. Rebuild before packaging."
+    }
 }
 
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ('stonewards-tp-release-' + [Guid]::NewGuid().ToString('N'))

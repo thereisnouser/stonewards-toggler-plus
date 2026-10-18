@@ -46,7 +46,20 @@ namespace StonewardsTogglerPlus
         private static readonly Dictionary<UpgradeCategory, PlayerClass?> Selected =
             new Dictionary<UpgradeCategory, PlayerClass?>();
 
+        // Thread-local draft context: determined ONCE per draft, not once per
+        // UpgradeManager.IsUpgradeBlacklisted call (which runs for every item).
+        private struct DraftState
+        {
+            internal UpgradeCategory? PreviousScope;
+            internal PlayerClass? PreviousPlayerClass;
+        }
+
         [ThreadStatic] private static UpgradeCategory? _draftScope;
+        [ThreadStatic] private static PlayerClass? _draftPlayerClass;
+
+        private static FieldInfo _gameManagerInstance;
+        private static PropertyInfo _localPlayerProperty;
+        private static FieldInfo _localPlayerClassField;
         private static VisualElement _shopRoot;
 
         private sealed class PixelTab
@@ -83,6 +96,19 @@ namespace StonewardsTogglerPlus
             // Use the same class eligibility check as CreateValidLevelupDraftPool.
             _isClassValid = AccessTools.Method(typeof(RogueLikeUpgradeSO),
                 "IsClassValid", new[] { typeof(PlayerClass) });
+
+            // Resolve reflection metadata only at initialization. The player
+            // instance itself is read once at the start of each reward draft.
+            var gameManagerType = AccessTools.TypeByName("GameManager");
+            if (gameManagerType != null)
+            {
+                _gameManagerInstance = AccessTools.Field(gameManagerType, "Instance");
+                _localPlayerProperty = AccessTools.Property(gameManagerType, "LocalPlayer");
+            }
+            var playerType = AccessTools.TypeByName("FirstPersonController");
+            if (playerType != null)
+                _localPlayerClassField = AccessTools.Field(playerType, "playerClass");
+
             _toggleCheck = AccessTools.Field(nativeButtonType, "toggleCheck");
             _refreshToggle = AccessTools.Method(nativeButtonType, "RefreshToggle");
 
@@ -156,33 +182,45 @@ namespace StonewardsTogglerPlus
             catch (Exception ex) { _log.LogError("Draft patch failed: " + ex); }
         }
 
-        private static void EnterRingDraft(out UpgradeCategory? __state)
+        private static void EnterRingDraft(out DraftState __state)
         {
-            __state = _draftScope;
-            _draftScope = UpgradeCategory.LEVELUP;
+            EnterDraft(UpgradeCategory.LEVELUP, out __state);
         }
 
-        private static void EnterTomeDraft(out UpgradeCategory? __state)
+        private static void EnterTomeDraft(out DraftState __state)
         {
-            __state = _draftScope;
-            _draftScope = UpgradeCategory.PICKUP;
+            EnterDraft(UpgradeCategory.PICKUP, out __state);
         }
 
-        private static Exception ExitDraft(Exception __exception, UpgradeCategory? __state)
+        private static void EnterDraft(UpgradeCategory category, out DraftState state)
         {
-            _draftScope = __state;
+            state = new DraftState
+            {
+                PreviousScope = _draftScope,
+                PreviousPlayerClass = _draftPlayerClass
+            };
+
+            _draftScope = category;
+            _draftPlayerClass = TryGetLocalClass(out var cls) ? cls : (PlayerClass?)null;
+        }
+
+        // Harmony finalizer restores the previous context even on exceptions.
+        private static Exception ExitDraft(Exception __exception, DraftState __state)
+        {
+            _draftScope = __state.PreviousScope;
+            _draftPlayerClass = __state.PreviousPlayerClass;
             return __exception;
         }
 
         // Override the actual blacklist decision while the game constructs the pool.
-        // Post-filtering a pool cannot re-enable a globally blacklisted item.
+        // Do NOT perform GameManager or PlayerClass reflection in this hot path.
         private static void AfterBlacklistedCheck(RogueLikeUpgradeSO upgradeSO, ref bool __result)
         {
             if (upgradeSO == null || !_draftScope.HasValue ||
+                !_draftPlayerClass.HasValue ||
                 upgradeSO.UpgradeCategory != _draftScope.Value ||
-                !TryGetLocalClass(out var cls) ||
                 !PerClass.TryGetValue(_draftScope.Value, out var byClass) ||
-                !byClass.TryGetValue(cls, out var rules))
+                !byClass.TryGetValue(_draftPlayerClass.Value, out var rules))
                 return;
 
             if (rules.Allowed.Contains(upgradeSO.ID)) __result = false;
@@ -300,27 +338,30 @@ namespace StonewardsTogglerPlus
         private static bool TryGetLocalClass(out PlayerClass cls)
         {
             cls = default(PlayerClass);
+            if (_gameManagerInstance == null || _localPlayerProperty == null ||
+                _localPlayerClassField == null)
+                return false;
+
             try
             {
-                var gmType = AccessTools.TypeByName("GameManager");
-                var gm = AccessTools.Field(gmType, "Instance")?.GetValue(null);
-                if (gm == null)
+                var manager = _gameManagerInstance.GetValue(null);
+                if (manager == null)
                     return false;
 
-                var player = AccessTools.Property(gmType, "LocalPlayer")?.GetValue(gm, null);
+                var player = _localPlayerProperty.GetValue(manager, null);
                 if (player == null)
                     return false;
 
-                var value = AccessTools.Field(player.GetType(), "playerClass")?.GetValue(player);
-                if (!(value is PlayerClass localClass))
+                var value = _localPlayerClassField.GetValue(player);
+                if (!(value is PlayerClass playerClass))
                     return false;
 
-                cls = localClass;
+                cls = playerClass;
                 return true;
             }
             catch
             {
-                return false; // If the class is unknown, preserve vanilla rewards.
+                return false; // Missing local player: preserve the game's original rules.
             }
         }
 

@@ -12,6 +12,7 @@
 - **Persistent choices** — global settings use Stonewards' existing save data; per-class settings are saved in your BepInEx profile.
 - **Native-style interface** — pixel-stepped class buttons and the game's own upgrade cards, with no extra hotkeys or standalone menus.
 - **Class portraits** — filter buttons show the game's existing character-class icon before the label in both Rings and Tomes; the global tab is simply **ALL**.
+- **Smoother reward choices** — local class is resolved once per reward draft, avoiding repeated reflection while checking every upgrade.
 
 ## 🎮 How to use
 
@@ -56,13 +57,13 @@ For local builds, use a profile named `stonewards-toggler-plus` to match this re
 
 ## 🔧 Compatibility
 
-- **Game:** Stonewards; developed against the game's existing Toggler and upgrade-draft interfaces. The new 0.2.0 class-filtering behavior requires in-game verification.
+- **Game:** Stonewards; developed and tested against the game's existing Toggler and upgrade-draft interfaces. Game updates may require compatibility changes.
 - **Mod loader:** BepInEx 5 with Harmony (Thunderstore dependency: `BepInEx-BepInExPack-5.4.2305`).
 - **Multiplayer:** Class overrides target the local player's reward draft. Synchronization and host/client behavior have not been independently verified.
 
 ## ⚠️ Known limitations
 
-- **New in 0.2.0:** Class-based exceptions are implemented in source but require gameplay testing before a public release.
+- Class-specific behavior has been tested locally, but synchronization across multiplayer clients and other machines is not independently verified.
 - The plugin needs an existing native card in each category to identify the correct Rings/Tomes grid. If the grid cannot be identified, it leaves that section unchanged.
 - Explicitly allowing an upgrade overrides only the relevant blacklist decision. Other game restrictions still apply, so it does not guarantee that an upgrade will be offered.
 - New rules affect future reward generation, not rewards already offered or collected.
@@ -96,7 +97,7 @@ powershell -ExecutionPolicy Bypass -File .\package-thunderstore.ps1 `
   -ProfileDir $profileDir
 ```
 
-The packager checks version consistency, compiled DLL metadata, the 256×256 icon, and required archive entries. Output: `dist/TogglerPlus-0.2.0.zip`. It does **not** publish the mod.
+The packager checks version consistency, compiled DLL metadata, the 256×256 icon, and required archive entries. Output: `dist/TogglerPlus-0.2.1.zip`. It does **not** publish the mod.
 
 ## 🔗 Links
 

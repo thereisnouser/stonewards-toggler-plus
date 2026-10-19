@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyName>StonewardsTogglerPlus</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <BepInExCoreDir Condition="'$(BepInExCoreDir)' == ''">$(GameDir)\BepInEx\core</BepInExCoreDir>

@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace StonewardsTogglerPlus
 {
-    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.0")]
+    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.1")]
     public sealed class TogglerPlusPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.thereisnouser.stonewards.togglerplus";

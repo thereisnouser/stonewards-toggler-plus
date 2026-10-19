@@ -54,13 +54,11 @@ if ($releaseChangelog -notmatch ('(?m)^##\s+' + [regex]::Escape($manifest.versio
     throw 'Thunderstore changelog does not contain an entry for this release version.'
 }
 
-# Confirm that this DLL includes the new class-specific rules and the 0.2.0 version.
-# This also protects -SkipBuild from accidentally packaging a 0.1.x DLL.
-$assemblyBytes = [System.IO.File]::ReadAllBytes($dll)
-$utf8Text = [System.Text.Encoding]::UTF8.GetString($assemblyBytes)
-if (-not $utf8Text.Contains('ClassRingRules') -or
-    -not $utf8Text.Contains([string]$manifest.version_number)) {
-    throw 'Compiled DLL does not match the TogglerPlus 0.2.0 sources. Delete bin/obj and rebuild.'
+# Read assembly version from managed PE metadata; byte-to-UTF8 scans are unreliable.
+# This protects -SkipBuild from packaging a DLL from an older local build.
+$assemblyVersion = [System.Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString(3)
+if ($assemblyVersion -ne [string]$manifest.version_number) {
+    throw "Compiled DLL version $assemblyVersion does not match manifest version $($manifest.version_number). Delete bin/obj and rebuild."
 }
 $sourceFiles = @(
     (Join-Path $repoDir 'src\TogglerPlusPlugin.cs'),

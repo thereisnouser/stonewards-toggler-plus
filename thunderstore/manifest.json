@@ -1,6 +1,6 @@
 {
   "name": "TogglerPlus",
-  "version_number": "0.2.1",
+  "version_number": "0.2.2",
   "website_url": "https://github.com/thereisnouser/stonewards-toggler-plus",
   "description": "Toggle default rings and tomes globally or by class, with class icons, compatible-ring filtering, and native-style shop controls.",
   "dependencies": [

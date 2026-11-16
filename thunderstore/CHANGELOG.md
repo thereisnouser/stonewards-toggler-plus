@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Rewrite GitHub and Thunderstore READMEs to follow the shared thereisnouser Stonewards description standard.
+- Clarify global versus per-class ring and tome rules, profile-local configuration, installation, and uninstall behavior.
+- Update release metadata to 0.2.2; gameplay behavior is unchanged from 0.2.1.
+
 ## 0.2.1
 
 - Release the new global and per-class controls for **both rings and tomes** through the built-in Toggler.

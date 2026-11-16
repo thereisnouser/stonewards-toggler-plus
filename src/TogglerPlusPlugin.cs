@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace StonewardsTogglerPlus
 {
-    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.1")]
+    [BepInPlugin(PluginGuid, "Stonewards Toggler Plus", "0.2.2")]
     public sealed class TogglerPlusPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.thereisnouser.stonewards.togglerplus";
@@ -83,7 +83,7 @@ namespace StonewardsTogglerPlus
 
             ClassRingRules.Initialize(this, _harmony, _buttonType, _buttonUnlockable, _getTogglerLevel);
 
-            Logger.LogInfo("Toggler Plus v0.2.0 initialized. Per-class ring/tome overrides are enabled.");
+            Logger.LogInfo("Toggler Plus initialized. Per-class ring/tome overrides are enabled.");
         }
 
         private void Patch(string methodName, string postfixName, Type[] arguments)
